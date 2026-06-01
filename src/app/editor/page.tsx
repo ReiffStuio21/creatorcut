@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MediaPanel } from "@/components/editor/media-panel";
 import { PreviewPlayer } from "@/components/editor/preview-player";
+import { TranscriptPanel } from "@/components/editor/transcript-panel";
 
 /**
  * Editor — the three-panel layout from PLAN.md §4.
@@ -36,11 +37,7 @@ export default function EditorPage() {
         <section className="flex flex-col gap-4 p-4">
           <PreviewPlayer />
           <div className="flex-1 rounded-xl border border-foreground/10 p-4">
-            <PanelLabel>Transcript</PanelLabel>
-            <p className="mt-2 text-sm text-foreground/40">
-              Your words appear here. Delete a line to cut the video. One click
-              removes filler words. — Phases 2–3
-            </p>
+            <TranscriptPanel />
           </div>
         </section>
 

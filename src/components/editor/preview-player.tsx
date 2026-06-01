@@ -9,6 +9,7 @@ import { useEditorStore } from "@/lib/store/editor";
 export function PreviewPlayer() {
   const video = useEditorStore((s) => s.video);
   const setMetadata = useEditorStore((s) => s.setMetadata);
+  const setVideoEl = useEditorStore((s) => s.setVideoEl);
 
   if (!video) {
     return (
@@ -21,6 +22,7 @@ export function PreviewPlayer() {
   return (
     <video
       key={video.id}
+      ref={setVideoEl}
       src={video.url}
       controls
       playsInline
