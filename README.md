@@ -2,7 +2,7 @@
 
 > **Edit your video by editing its transcript.** A beginner-first AI video editor: upload a clip, delete the words you don't want, clean up filler words, auto-caption, add music + a logo, pick a look, and export an MP4 — without ever learning a timeline.
 
-**Live demo:** _add your Vercel URL here_ · **Demo:** _add a 30–60s GIF here_
+**Live demo:** **[creatorcut-sepia.vercel.app](https://creatorcut-sepia.vercel.app)** · **Demo:** _add a 30–60s GIF here_
 
 The app runs with **zero configuration** — transcription falls back to a built-in dev mock and auth is a no-op until you add Supabase — so a fresh deploy is a working demo immediately.
 
