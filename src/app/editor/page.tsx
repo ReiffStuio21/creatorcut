@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { MediaPanel } from "@/components/editor/media-panel";
+import { PreviewPlayer } from "@/components/editor/preview-player";
 
 /**
- * Phase 0 editor shell — the three-panel layout from PLAN.md §4.
+ * Editor — the three-panel layout from PLAN.md §4.
  * Left: media tray. Center: preview + transcript editor. Right: panel (captions,
- * cost meter). Each region is a labeled placeholder; features land in Phases 1–6.
+ * cost meter). Phase 1 wires upload + preview; transcript/captions land next.
  */
 export default function EditorPage() {
   return (
@@ -24,17 +26,15 @@ export default function EditorPage() {
       </header>
 
       <div className="grid flex-1 grid-cols-[220px_1fr_300px] divide-x divide-foreground/10">
-        {/* Left — media tray (Phase 5) */}
-        <aside className="flex flex-col gap-2 p-4">
+        {/* Left — media tray (Phase 1 upload; music/images Phase 5) */}
+        <aside className="flex flex-col gap-3 p-4">
           <PanelLabel>Media</PanelLabel>
-          <Placeholder>Upload video, music, images, logo (Phase 1 &amp; 5)</Placeholder>
+          <MediaPanel />
         </aside>
 
         {/* Center — preview + transcript (Phases 1–3) */}
         <section className="flex flex-col gap-4 p-4">
-          <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-foreground/15 text-sm text-foreground/40">
-            Preview player (reads the EDL) — Phase 1
-          </div>
+          <PreviewPlayer />
           <div className="flex-1 rounded-xl border border-foreground/10 p-4">
             <PanelLabel>Transcript</PanelLabel>
             <p className="mt-2 text-sm text-foreground/40">
