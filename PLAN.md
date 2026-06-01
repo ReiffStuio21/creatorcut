@@ -151,7 +151,7 @@ Thin vertical slices. Each phase ends with something you can click. **Do not mov
 - **Phase 1 — Upload & play** ✅ *(done)*: drag-and-drop upload → browser memory → `<video>`; show duration/resolution. *Checkpoint: upload a clip and play it.*
 - **Phase 2 — Transcription (pipeline step 1)** ✅ *(done — dev mock provider; real STT API still to wire)*: pipeline step-status model; `/api/transcribe` → word-level timestamps; transcript panel with retry; click word → seek.
 - **Phase 3 — Transcript editing = video editing** ✅ *(done)*: EDL built from transcript; pure functions + **unit tests** (8 passing); click word → `kept:false`; preview skips un-kept segments; one-click "Clean up" (fillers + silence) + "Restore all"; live output duration. *Checkpoint met: remove words → playback skips them.*
-- **Phase 4 — Captions** (2 days): caption cues from timestamps; overlay with 2–3 style presets; synced in preview.
+- **Phase 4 — Captions** ✅ *(done)*: `buildCaptionCues` from the EDL (+ tests); synced overlay on the preview with 3 style presets (Bold/Clean/Boxed) + color; enable toggle in the captions panel.
 - **Phase 5 — User media** (2–3 days): music (bg track + volume), image/logo (overlay + position + start/end), extra video (EDL segment).
 - **Phase 6 — Export via `Renderer`** (3–5 days, expect pain): add FFmpeg.wasm deps; implement `WasmRenderer`; EDL → FFmpeg filtergraph (cut, concat, burn captions, mix music, overlay images, aspect ratio); 9:16/1:1/16:9 presets; progress bar; wire `estimateCost`. Test 30s → 2min; when it stalls, that's the `ServerRenderer` signal.
 - **Phase 7 — Polish**: 3–5 LUT filters, 3 transitions, empty/loading/error states, 3-step onboarding.

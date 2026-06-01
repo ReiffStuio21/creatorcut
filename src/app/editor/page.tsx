@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MediaPanel } from "@/components/editor/media-panel";
 import { PreviewPlayer } from "@/components/editor/preview-player";
 import { TranscriptPanel } from "@/components/editor/transcript-panel";
+import { CaptionsPanel } from "@/components/editor/captions-panel";
 
 /**
  * Editor — the three-panel layout from PLAN.md §4.
@@ -45,7 +46,7 @@ export default function EditorPage() {
         <aside className="flex flex-col gap-4 p-4">
           <div>
             <PanelLabel>Captions</PanelLabel>
-            <Placeholder>Style presets &amp; sync — Phase 4</Placeholder>
+            <CaptionsPanel />
           </div>
           <div>
             <PanelLabel>Cost meter</PanelLabel>

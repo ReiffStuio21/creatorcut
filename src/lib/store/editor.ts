@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Transcript } from "@/lib/transcription/provider";
-import type { AspectRatio, EDL } from "@/lib/edl/types";
+import type { AspectRatio, CaptionConfig, EDL } from "@/lib/edl/types";
 import { edlFromTranscript } from "@/lib/edl/from-transcript";
 import {
   applyCleanup,
@@ -52,6 +52,7 @@ interface EditorState {
   toggleSegment: (id: string) => void;
   cleanup: () => void;
   restoreAll: () => void;
+  setCaptions: (patch: Partial<CaptionConfig>) => void;
   setVideoEl: (el: HTMLVideoElement | null) => void;
   seekTo: (seconds: number) => void;
   reset: () => void;
@@ -124,6 +125,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   cleanup: () => set((s) => (s.edl ? { edl: applyCleanup(s.edl) } : s)),
 
   restoreAll: () => set((s) => (s.edl ? { edl: setAllKept(s.edl, true) } : s)),
+
+  setCaptions: (patch) =>
+    set((s) =>
+      s.edl
+        ? { edl: { ...s.edl, captions: { ...s.edl.captions, ...patch } } }
+        : s,
+    ),
 
   setVideoEl: (el) => set({ videoEl: el }),
 
