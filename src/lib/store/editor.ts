@@ -4,6 +4,7 @@ import type { AspectRatio, CaptionConfig, EDL } from "@/lib/edl/types";
 import { edlFromTranscript } from "@/lib/edl/from-transcript";
 import {
   applyCleanup,
+  outputDuration,
   setAllKept,
   setSegmentKept,
 } from "@/lib/edl/operations";
@@ -32,6 +33,24 @@ export interface LoadedVideo {
   height: number;
 }
 
+/** A background music track the user uploaded (Phase 5). */
+export interface MusicAsset {
+  id: string;
+  url: string; // object URL
+  fileName: string;
+  /** 0..1 */
+  volume: number;
+}
+
+/** An image/logo overlay (Phase 5). x/y are % of the frame, 0..100. */
+export interface ImageAsset {
+  id: string;
+  url: string; // object URL
+  fileName: string;
+  x: number;
+  y: number;
+}
+
 interface EditorState {
   video: LoadedVideo | null;
 
@@ -42,6 +61,10 @@ interface EditorState {
   // The edit decision list — single source of truth for the cut (PLAN.md §4a)
   edl: EDL | null;
   aspectRatio: AspectRatio;
+
+  // User media (Phase 5) — folded into edl.tracks at export time
+  music: MusicAsset | null;
+  images: ImageAsset[];
 
   // Export (Phase 6) — WasmRenderer turns the EDL into a downloadable MP4
   exportStep: StepState;
@@ -60,6 +83,12 @@ interface EditorState {
   restoreAll: () => void;
   setCaptions: (patch: Partial<CaptionConfig>) => void;
   setAspectRatio: (aspectRatio: AspectRatio) => void;
+  addMusic: (file: File) => void;
+  setMusicVolume: (volume: number) => void;
+  removeMusic: () => void;
+  addImage: (file: File) => void;
+  setImagePosition: (id: string, x: number, y: number) => void;
+  removeImage: (id: string) => void;
   runExport: () => Promise<void>;
   setVideoEl: (el: HTMLVideoElement | null) => void;
   seekTo: (seconds: number) => void;
@@ -72,6 +101,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   transcribe: idleStep,
   edl: null,
   aspectRatio: "9:16",
+  music: null,
+  images: [],
   exportStep: idleStep,
   exportStage: null,
   exportProgress: 0,
@@ -157,8 +188,56 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       edl: s.edl ? { ...s.edl, aspectRatio } : s.edl,
     })),
 
+  addMusic: (file) => {
+    const prev = get().music;
+    if (prev) URL.revokeObjectURL(prev.url);
+    set({
+      music: {
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        fileName: file.name,
+        volume: 0.3,
+      },
+    });
+  },
+
+  setMusicVolume: (volume) =>
+    set((s) => (s.music ? { music: { ...s.music, volume } } : s)),
+
+  removeMusic: () => {
+    const prev = get().music;
+    if (prev) URL.revokeObjectURL(prev.url);
+    set({ music: null });
+  },
+
+  addImage: (file) =>
+    set((s) => ({
+      images: [
+        ...s.images,
+        {
+          id: crypto.randomUUID(),
+          url: URL.createObjectURL(file),
+          fileName: file.name,
+          x: 50, // default: centered
+          y: 12, // near the top
+        },
+      ],
+    })),
+
+  setImagePosition: (id, x, y) =>
+    set((s) => ({
+      images: s.images.map((im) => (im.id === id ? { ...im, x, y } : im)),
+    })),
+
+  removeImage: (id) =>
+    set((s) => {
+      const target = s.images.find((im) => im.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return { images: s.images.filter((im) => im.id !== id) };
+    }),
+
   runExport: async () => {
-    const { video, edl } = get();
+    const { video, edl, music, images } = get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
     const prevUrl = get().exportUrl;
@@ -171,13 +250,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
 
     try {
+      // Fold the user's media into the EDL's tracks so the renderer (which reads
+      // the EDL as the single source of truth) can mix/overlay them.
+      const outDur = outputDuration(edl);
+      const edlForExport: EDL = {
+        ...edl,
+        tracks: {
+          music: music
+            ? [{ src: music.url, start: 0, volume: music.volume }]
+            : [],
+          images: images.map((im) => ({
+            src: im.url,
+            start: 0,
+            end: outDur,
+            x: im.x,
+            y: im.y,
+          })),
+        },
+      };
+
       // Dynamic import keeps the heavy FFmpeg bundle out of initial page load.
       const { WasmRenderer } = await import("@/lib/render/wasm-renderer");
       const renderer = new WasmRenderer({
         onStage: (stage) => set({ exportStage: stage }),
         onProgress: (value) => set({ exportProgress: value }),
       });
-      const blob = await renderer.render(edl, {
+      const blob = await renderer.render(edlForExport, {
         id: video.id,
         url: video.url,
         duration: video.duration,
@@ -216,15 +314,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   reset: () => {
-    const prev = get().video;
-    if (prev) URL.revokeObjectURL(prev.url);
-    const prevExport = get().exportUrl;
-    if (prevExport) URL.revokeObjectURL(prevExport);
+    const s = get();
+    if (s.video) URL.revokeObjectURL(s.video.url);
+    if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
+    if (s.music) URL.revokeObjectURL(s.music.url);
+    s.images.forEach((im) => URL.revokeObjectURL(im.url));
     set({
       video: null,
       transcript: null,
       transcribe: idleStep,
       edl: null,
+      music: null,
+      images: [],
       exportStep: idleStep,
       exportStage: null,
       exportProgress: 0,

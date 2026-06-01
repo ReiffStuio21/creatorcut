@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "@/lib/store/editor";
-import { skipToKept } from "@/lib/edl/operations";
+import { skipToKept, sourceToOutputTime } from "@/lib/edl/operations";
 import { activeCue, buildCaptionCues } from "@/lib/captions/cues";
 import type { CaptionStyle } from "@/lib/edl/types";
 import { cn } from "@/lib/utils";
@@ -14,15 +14,19 @@ const STYLE_CLASSES: Record<CaptionStyle, string> = {
 };
 
 /**
- * Center preview. Reads the EDL so playback skips removed segments (Phase 3) and
- * renders synced captions over the video (Phase 4).
+ * Center preview. Reads the EDL so playback skips removed segments (Phase 3),
+ * renders synced captions (Phase 4), and shows image overlays + plays the
+ * background music in rough sync with the cut (Phase 5).
  */
 export function PreviewPlayer() {
   const video = useEditorStore((s) => s.video);
   const edl = useEditorStore((s) => s.edl);
+  const music = useEditorStore((s) => s.music);
+  const images = useEditorStore((s) => s.images);
   const setMetadata = useEditorStore((s) => s.setMetadata);
   const setVideoEl = useEditorStore((s) => s.setVideoEl);
   const localRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
 
   const ref = useCallback(
@@ -38,6 +42,11 @@ export function PreviewPlayer() {
   const cue =
     captions?.enabled && cues.length ? activeCue(cues, currentTime) : null;
 
+  // Keep the music element's volume in sync with the track setting.
+  useEffect(() => {
+    if (audioRef.current && music) audioRef.current.volume = music.volume;
+  }, [music]);
+
   useEffect(() => {
     const el = localRef.current;
     if (!el) return;
@@ -49,12 +58,26 @@ export function PreviewPlayer() {
         } else if (next > el.currentTime + 0.05) {
           el.currentTime = next;
         }
+        // keep the music aligned to the OUTPUT (post-cut) timeline
+        const audio = audioRef.current;
+        if (audio && music) {
+          const outT = sourceToOutputTime(edl, el.currentTime);
+          if (Math.abs(audio.currentTime - outT) > 0.3) audio.currentTime = outT;
+        }
       }
       setCurrentTime(el.currentTime);
     };
+    const onPlay = () => audioRef.current?.play().catch(() => {});
+    const onPause = () => audioRef.current?.pause();
     el.addEventListener("timeupdate", onTime);
-    return () => el.removeEventListener("timeupdate", onTime);
-  }, [edl, video?.id]);
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    return () => {
+      el.removeEventListener("timeupdate", onTime);
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+    };
+  }, [edl, music, video?.id]);
 
   if (!video) {
     return (
@@ -82,6 +105,19 @@ export function PreviewPlayer() {
           });
         }}
       />
+
+      {/* image/logo overlays (approximate — export is authoritative) */}
+      {images.map((im) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={im.id}
+          src={im.url}
+          alt=""
+          className="pointer-events-none absolute w-1/4"
+          style={{ left: `${im.x * 0.75}%`, top: `${im.y * 0.75}%` }}
+        />
+      ))}
+
       {cue && captions && (
         <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center px-6 text-center">
           <span
@@ -92,6 +128,8 @@ export function PreviewPlayer() {
           </span>
         </div>
       )}
+
+      {music && <audio ref={audioRef} src={music.url} preload="auto" />}
     </div>
   );
 }

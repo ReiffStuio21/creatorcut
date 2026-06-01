@@ -24,6 +24,7 @@ const FONT_URL =
 const FONTS_DIR = "fonts";
 const FONT_PATH = `${FONTS_DIR}/Roboto_400Regular.ttf`;
 const SRT_PATH = "subs.srt";
+const MUSIC_PATH = "music_in";
 
 export interface WasmRenderHooks {
   /** "loading" = fetching/booting the FFmpeg core; "encoding" = running it. */
@@ -47,6 +48,7 @@ export class WasmRenderer implements Renderer {
     };
     ffmpeg.on("progress", onProgress);
 
+    const imagePaths: string[] = [];
     try {
       await ffmpeg.writeFile(INPUT_NAME, await fetchFile(source.url));
 
@@ -67,7 +69,23 @@ export class WasmRenderer implements Renderer {
         };
       }
 
-      const args = ffmpegArgsForExport(edl, { withAudio, captions });
+      // Write user media (Phase 5) and pass it to the graph.
+      const musicTrack = edl.tracks.music[0];
+      let music: { path: string; volume: number } | undefined;
+      if (musicTrack) {
+        await ffmpeg.writeFile(MUSIC_PATH, await fetchFile(musicTrack.src));
+        music = { path: MUSIC_PATH, volume: musicTrack.volume };
+      }
+      const images = await Promise.all(
+        edl.tracks.images.map(async (im, k) => {
+          const path = `img_in_${k}`;
+          await ffmpeg.writeFile(path, await fetchFile(im.src));
+          imagePaths.push(path);
+          return { path, x: im.x, y: im.y };
+        }),
+      );
+
+      const args = ffmpegArgsForExport(edl, { withAudio, captions, music, images });
 
       this.hooks.onStage?.("encoding");
       await ffmpeg.exec(args);
@@ -84,6 +102,8 @@ export class WasmRenderer implements Renderer {
       await ffmpeg.deleteFile(INPUT_NAME).catch(() => {});
       await ffmpeg.deleteFile(OUTPUT_NAME).catch(() => {});
       await ffmpeg.deleteFile(SRT_PATH).catch(() => {});
+      await ffmpeg.deleteFile(MUSIC_PATH).catch(() => {});
+      await Promise.all(imagePaths.map((p) => ffmpeg.deleteFile(p).catch(() => {})));
     }
   }
 

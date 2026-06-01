@@ -47,8 +47,42 @@ describe("ffmpegArgsForExport", () => {
       captions: { srtFile: "subs.srt", fontsDir: "fonts", forceStyle: "FontSize=20" },
     });
     const fc = args[args.indexOf("-filter_complex") + 1];
-    expect(fc).toContain("[vcat]subtitles=subs.srt:fontsdir=fonts:force_style='FontSize=20'[outv]");
-    expect(fc).not.toContain("[vcat]null[outv]");
+    expect(fc).toContain("[vcat]subtitles=subs.srt:fontsdir=fonts:force_style='FontSize=20'[vcap]");
+    expect(fc).toContain("[vcap]null[outv]");
+  });
+
+  it("mixes background music under the speech", () => {
+    const args = ffmpegArgsForExport(edl(), {
+      music: { path: "song.mp3", volume: 0.3 },
+      outputSeconds: 8,
+    });
+    expect(args).toContain("song.mp3"); // -i song.mp3 (input 1)
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[1:a]volume=0.3,atrim=0:8");
+    expect(fc).toContain("amix=inputs=2");
+    expect(args).toContain("[aout]"); // mapped as the output audio
+  });
+
+  it("overlays an image at the given position", () => {
+    const args = ffmpegArgsForExport(edl(), {
+      images: [{ path: "logo.png", x: 50, y: 12 }],
+    });
+    expect(args).toContain("logo.png"); // input 1 (no music)
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[1:v]scale=");
+    expect(fc).toContain("overlay=x=(W-w)*0.5000:y=(H-h)*0.1200[ov0]");
+    expect(fc).toContain("[ov0]null[outv]");
+  });
+
+  it("orders inputs video → music → images", () => {
+    const args = ffmpegArgsForExport(edl(), {
+      music: { path: "song.mp3", volume: 0.5 },
+      images: [{ path: "logo.png", x: 0, y: 0 }],
+      outputSeconds: 8,
+    });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[1:a]volume=0.5"); // music is input 1
+    expect(fc).toContain("[2:v]scale="); // image is input 2
   });
 
   it("throws when nothing is kept", () => {

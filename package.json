@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "test:e2e": "node e2e/export.mjs",
     "test:e2e:captions": "node e2e/verify-captions.mjs",
+    "test:e2e:media": "node e2e/verify-media.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

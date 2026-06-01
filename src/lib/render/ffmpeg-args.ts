@@ -35,6 +35,19 @@ export interface CaptionBurn {
   forceStyle: string;
 }
 
+/** A background music input (Phase 5). */
+export interface MusicInput {
+  path: string;
+  volume: number;
+}
+
+/** An image/logo overlay input (Phase 5). x/y are % of the frame, 0..100. */
+export interface ImageInput {
+  path: string;
+  x: number;
+  y: number;
+}
+
 export interface ExportOptions {
   /**
    * Whether the source has an audio stream. When false, the graph omits all
@@ -45,6 +58,12 @@ export interface ExportOptions {
   withAudio?: boolean;
   /** When set, burn captions into the video via the `subtitles` filter. */
   captions?: CaptionBurn;
+  /** Background music mixed under the speech (Phase 5). */
+  music?: MusicInput;
+  /** Image/logo overlays, drawn in order (Phase 5). */
+  images?: ImageInput[];
+  /** Output length in seconds — used to bound the music track. */
+  outputSeconds?: number;
 }
 
 /**
@@ -53,7 +72,7 @@ export interface ExportOptions {
  */
 export function ffmpegArgsForExport(
   edl: EDL,
-  { withAudio = true, captions }: ExportOptions = {},
+  { withAudio = true, captions, music, images = [], outputSeconds }: ExportOptions = {},
 ): string[] {
   const kept = toKeptSegments(edl);
   if (kept.length === 0) {
@@ -61,6 +80,12 @@ export function ffmpegArgsForExport(
   }
 
   const { width: w, height: h } = TARGET_SIZES[edl.aspectRatio];
+  const outSeconds = outputSeconds ?? outputDuration(edl);
+
+  // Input indices: 0 = video, then music (if any), then each image.
+  let nextIndex = 1;
+  const musicIndex = music ? nextIndex++ : -1;
+  const imageIndices = images.map(() => nextIndex++);
 
   const parts: string[] = [];
   const concatInputs: string[] = [];
@@ -79,34 +104,61 @@ export function ffmpegArgsForExport(
     concatInputs.push(withAudio ? `[v${i}][a${i}]` : `[v${i}]`);
   });
 
-  // Concatenate to [vcat]; if burning captions, run [vcat] through subtitles.
   const concat = withAudio
     ? `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=1[vcat][outa]`
     : `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=0[vcat]`;
 
   const chain = [...parts, concat];
+
+  // Video post-chain: captions burn → image overlays → [outv].
+  let v = "[vcat]";
   if (captions) {
     chain.push(
-      `[vcat]subtitles=${captions.srtFile}:fontsdir=${captions.fontsDir}:` +
-        `force_style='${captions.forceStyle}'[outv]`,
+      `${v}subtitles=${captions.srtFile}:fontsdir=${captions.fontsDir}:` +
+        `force_style='${captions.forceStyle}'[vcap]`,
     );
-  } else {
-    // no caption pass → rename [vcat] to [outv] with a no-op copy
-    chain.push(`[vcat]null[outv]`);
+    v = "[vcap]";
   }
+  images.forEach((im, k) => {
+    const idx = imageIndices[k];
+    // Scale logo to a quarter of the frame width, then overlay at x/y %.
+    chain.push(`[${idx}:v]scale=${Math.round(w * 0.25)}:-1[img${k}]`);
+    chain.push(
+      `${v}[img${k}]overlay=x=(W-w)*${(im.x / 100).toFixed(4)}:` +
+        `y=(H-h)*${(im.y / 100).toFixed(4)}[ov${k}]`,
+    );
+    v = `[ov${k}]`;
+  });
+  chain.push(`${v}null[outv]`);
+
+  // Audio post-chain: mix music under the speech (or use whichever exists).
+  let aout: string | null = null;
+  if (music) {
+    chain.push(
+      `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},` +
+        `asetpts=PTS-STARTPTS[mus]`,
+    );
+  }
+  if (withAudio && music) {
+    chain.push(`[outa][mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`);
+    aout = "[aout]";
+  } else if (withAudio) {
+    aout = "[outa]";
+  } else if (music) {
+    aout = "[mus]";
+  }
+
   const filterComplex = chain.join(";");
 
-  const args = [
-    "-i",
-    INPUT_NAME,
-    "-filter_complex",
-    filterComplex,
-    "-map",
-    "[outv]",
-  ];
-  if (withAudio) args.push("-map", "[outa]");
+  // Inputs in index order: video, music, images.
+  const args = ["-i", INPUT_NAME];
+  if (music) args.push("-i", music.path);
+  images.forEach((im) => args.push("-i", im.path));
+
+  args.push("-filter_complex", filterComplex, "-map", "[outv]");
+  if (aout) args.push("-map", aout);
   args.push("-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p");
-  if (withAudio) args.push("-c:a", "aac");
+  if (aout) args.push("-c:a", "aac");
   else args.push("-an");
   args.push(OUTPUT_NAME);
 
