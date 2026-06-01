@@ -26,11 +26,24 @@ export const TARGET_SIZES: Record<AspectRatio, TargetSize> = {
 export const INPUT_NAME = "input.mp4";
 export const OUTPUT_NAME = "output.mp4";
 
+export interface ExportOptions {
+  /**
+   * Whether the source has an audio stream. When false, the graph omits all
+   * `[0:a]` references — required for silent clips, which otherwise abort with
+   * "Stream specifier ':a' ... matches no streams". The renderer probes the
+   * source and passes the right value.
+   */
+  withAudio?: boolean;
+}
+
 /**
  * Build the FFmpeg argv for exporting the current cut. Throws if nothing is
  * kept (caller should guard and tell the user).
  */
-export function ffmpegArgsForExport(edl: EDL): string[] {
+export function ffmpegArgsForExport(
+  edl: EDL,
+  { withAudio = true }: ExportOptions = {},
+): string[] {
   const kept = toKeptSegments(edl);
   if (kept.length === 0) {
     throw new Error("Nothing to export — every word has been removed.");
@@ -47,34 +60,34 @@ export function ffmpegArgsForExport(edl: EDL): string[] {
         `scale=${w}:${h}:force_original_aspect_ratio=increase,` +
         `crop=${w}:${h},setsar=1[v${i}]`,
     );
-    parts.push(
-      `[0:a]atrim=start=${s.start}:end=${s.end},asetpts=PTS-STARTPTS[a${i}]`,
-    );
-    concatInputs.push(`[v${i}][a${i}]`);
+    if (withAudio) {
+      parts.push(
+        `[0:a]atrim=start=${s.start}:end=${s.end},asetpts=PTS-STARTPTS[a${i}]`,
+      );
+    }
+    concatInputs.push(withAudio ? `[v${i}][a${i}]` : `[v${i}]`);
   });
 
-  const concat = `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=1[outv][outa]`;
+  const concat = withAudio
+    ? `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=1[outv][outa]`
+    : `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=0[outv]`;
   const filterComplex = [...parts, concat].join(";");
 
-  return [
+  const args = [
     "-i",
     INPUT_NAME,
     "-filter_complex",
     filterComplex,
     "-map",
     "[outv]",
-    "-map",
-    "[outa]",
-    "-c:v",
-    "libx264",
-    "-preset",
-    "ultrafast",
-    "-pix_fmt",
-    "yuv420p",
-    "-c:a",
-    "aac",
-    OUTPUT_NAME,
   ];
+  if (withAudio) args.push("-map", "[outa]");
+  args.push("-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p");
+  if (withAudio) args.push("-c:a", "aac");
+  else args.push("-an");
+  args.push(OUTPUT_NAME);
+
+  return args;
 }
 
 /**

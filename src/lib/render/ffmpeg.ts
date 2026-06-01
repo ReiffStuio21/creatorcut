@@ -26,6 +26,7 @@ export async function getFFmpeg(): Promise<FFmpeg> {
       instance = ffmpeg;
       return ffmpeg;
     })().catch((e) => {
+      console.error("[ffmpeg] load failed:", e);
       // allow a later retry if the CDN fetch/load fails
       loadPromise = null;
       throw e;

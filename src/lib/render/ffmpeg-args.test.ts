@@ -33,6 +33,15 @@ describe("ffmpegArgsForExport", () => {
     expect(args).toContain("libx264");
   });
 
+  it("omits all audio when the source is silent (withAudio:false)", () => {
+    const args = ffmpegArgsForExport(edl(), { withAudio: false });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).not.toContain("[0:a]");
+    expect(fc).toContain("concat=n=2:v=1:a=0[outv]");
+    expect(args).toContain("-an");
+    expect(args).not.toContain("[outa]");
+  });
+
   it("throws when nothing is kept", () => {
     const empty: EDL = {
       ...emptyEDL("v"),

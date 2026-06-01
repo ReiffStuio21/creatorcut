@@ -191,8 +191,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         exportProgress: 1,
       });
     } catch (e) {
+      console.error("[export] raw error:", e, "typeof:", typeof e);
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : JSON.stringify(e);
       set({
-        exportStep: errorStep(e instanceof Error ? e.message : "Export failed"),
+        exportStep: errorStep(message || "Export failed"),
         exportStage: null,
       });
     }
