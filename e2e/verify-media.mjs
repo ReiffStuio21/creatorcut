@@ -9,7 +9,7 @@ import fs from "node:fs";
 const VIDEO = process.env.CC_SAMPLE ?? "/tmp/sample_audio.mp4"; // has audio
 const LOGO = "/tmp/logo.png";
 const URL = "http://localhost:3000/editor";
-const W = 720, H = 1280;
+const W = 720;
 
 const browser = await chromium.launch();
 
