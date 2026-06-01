@@ -3,11 +3,12 @@ import { MediaPanel } from "@/components/editor/media-panel";
 import { PreviewPlayer } from "@/components/editor/preview-player";
 import { TranscriptPanel } from "@/components/editor/transcript-panel";
 import { CaptionsPanel } from "@/components/editor/captions-panel";
+import { ExportPanel } from "@/components/editor/export-panel";
+import { HeaderExportButton } from "@/components/editor/header-export-button";
 
 /**
  * Editor — the three-panel layout from PLAN.md §4.
- * Left: media tray. Center: preview + transcript editor. Right: panel (captions,
- * cost meter). Phase 1 wires upload + preview; transcript/captions land next.
+ * Left: media tray. Center: preview + transcript editor. Right: captions + export.
  */
 export default function EditorPage() {
   return (
@@ -19,12 +20,7 @@ export default function EditorPage() {
           </Link>
           <span className="text-xs text-foreground/40">Untitled project</span>
         </div>
-        <button
-          className="cursor-not-allowed rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background opacity-50"
-          disabled
-        >
-          Export MP4
-        </button>
+        <HeaderExportButton />
       </header>
 
       <div className="grid flex-1 grid-cols-[220px_1fr_300px] divide-x divide-foreground/10">
@@ -49,8 +45,8 @@ export default function EditorPage() {
             <CaptionsPanel />
           </div>
           <div>
-            <PanelLabel>Cost meter</PanelLabel>
-            <Placeholder>Estimated API spend this project — $0.00</Placeholder>
+            <PanelLabel>Export</PanelLabel>
+            <ExportPanel />
           </div>
         </aside>
       </div>
@@ -63,13 +59,5 @@ function PanelLabel({ children }: { children: React.ReactNode }) {
     <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
       {children}
     </h2>
-  );
-}
-
-function Placeholder({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-2 rounded-lg border border-dashed border-foreground/15 p-3 text-xs text-foreground/40">
-      {children}
-    </div>
   );
 }

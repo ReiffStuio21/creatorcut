@@ -43,6 +43,12 @@ interface EditorState {
   edl: EDL | null;
   aspectRatio: AspectRatio;
 
+  // Export (Phase 6) — WasmRenderer turns the EDL into a downloadable MP4
+  exportStep: StepState;
+  exportStage: "loading" | "encoding" | null;
+  exportProgress: number; // 0..1
+  exportUrl: string | null; // object URL of the finished MP4
+
   // preview wiring: the live <video> element, registered by PreviewPlayer
   videoEl: HTMLVideoElement | null;
 
@@ -53,6 +59,8 @@ interface EditorState {
   cleanup: () => void;
   restoreAll: () => void;
   setCaptions: (patch: Partial<CaptionConfig>) => void;
+  setAspectRatio: (aspectRatio: AspectRatio) => void;
+  runExport: () => Promise<void>;
   setVideoEl: (el: HTMLVideoElement | null) => void;
   seekTo: (seconds: number) => void;
   reset: () => void;
@@ -64,11 +72,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   transcribe: idleStep,
   edl: null,
   aspectRatio: "9:16",
+  exportStep: idleStep,
+  exportStage: null,
+  exportProgress: 0,
+  exportUrl: null,
   videoEl: null,
 
   loadFile: (file) => {
     const prev = get().video;
     if (prev) URL.revokeObjectURL(prev.url);
+    const prevExport = get().exportUrl;
+    if (prevExport) URL.revokeObjectURL(prevExport);
     set({
       video: {
         id: crypto.randomUUID(),
@@ -84,6 +98,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       transcript: null,
       transcribe: idleStep,
       edl: null,
+      exportStep: idleStep,
+      exportStage: null,
+      exportProgress: 0,
+      exportUrl: null,
     });
   },
 
@@ -133,6 +151,53 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         : s,
     ),
 
+  setAspectRatio: (aspectRatio) =>
+    set((s) => ({
+      aspectRatio,
+      edl: s.edl ? { ...s.edl, aspectRatio } : s.edl,
+    })),
+
+  runExport: async () => {
+    const { video, edl } = get();
+    if (!video || !edl || get().exportStep.status === "running") return;
+
+    const prevUrl = get().exportUrl;
+    if (prevUrl) URL.revokeObjectURL(prevUrl);
+    set({
+      exportStep: runningStep(),
+      exportStage: "loading",
+      exportProgress: 0,
+      exportUrl: null,
+    });
+
+    try {
+      // Dynamic import keeps the heavy FFmpeg bundle out of initial page load.
+      const { WasmRenderer } = await import("@/lib/render/wasm-renderer");
+      const renderer = new WasmRenderer({
+        onStage: (stage) => set({ exportStage: stage }),
+        onProgress: (value) => set({ exportProgress: value }),
+      });
+      const blob = await renderer.render(edl, {
+        id: video.id,
+        url: video.url,
+        duration: video.duration,
+        width: video.width,
+        height: video.height,
+      });
+      set({
+        exportUrl: URL.createObjectURL(blob),
+        exportStep: doneStep(),
+        exportStage: null,
+        exportProgress: 1,
+      });
+    } catch (e) {
+      set({
+        exportStep: errorStep(e instanceof Error ? e.message : "Export failed"),
+        exportStage: null,
+      });
+    }
+  },
+
   setVideoEl: (el) => set({ videoEl: el }),
 
   seekTo: (seconds) => {
@@ -146,6 +211,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   reset: () => {
     const prev = get().video;
     if (prev) URL.revokeObjectURL(prev.url);
-    set({ video: null, transcript: null, transcribe: idleStep, edl: null });
+    const prevExport = get().exportUrl;
+    if (prevExport) URL.revokeObjectURL(prevExport);
+    set({
+      video: null,
+      transcript: null,
+      transcribe: idleStep,
+      edl: null,
+      exportStep: idleStep,
+      exportStage: null,
+      exportProgress: 0,
+      exportUrl: null,
+    });
   },
 }));

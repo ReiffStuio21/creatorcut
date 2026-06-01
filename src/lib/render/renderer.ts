@@ -18,26 +18,8 @@ export interface Renderer {
   estimateCost(edl: EDL): CostEstimate;
 }
 
-/**
- * Browser-side renderer (FFmpeg.wasm). Stubbed until Phase 6, when the
- * @ffmpeg/ffmpeg deps are added and the EDL → filtergraph translation lands.
- */
-export class WasmRenderer implements Renderer {
-  async render(_edl: EDL, _source: VideoSource): Promise<Blob> {
-    throw new Error(
-      "WasmRenderer not implemented yet — see PLAN.md Phase 6 (Export).",
-    );
-  }
-
-  estimateCost(edl: EDL): CostEstimate {
-    // Browser rendering runs on the user's machine → $0 compute.
-    const secs = outputDuration(edl);
-    return {
-      usd: 0,
-      breakdown: [`Browser render (${secs.toFixed(1)}s output): $0.00`],
-    };
-  }
-}
+// The browser-side renderer (FFmpeg.wasm) lives in ./wasm-renderer to keep the
+// heavy FFmpeg import out of this module; it is dynamically imported on export.
 
 /**
  * Server-side renderer (real ffmpeg worker). Phase 2 stub — the value right now
