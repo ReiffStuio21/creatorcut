@@ -60,6 +60,9 @@ export interface EDLTracks {
   images: ImageOverlay[];
 }
 
+/** Color "look" applied to the whole video (Phase 7). */
+export type VideoFilterId = "none" | "warm" | "cool" | "mono" | "vivid" | "bright";
+
 export interface EDL {
   /** Source asset id. */
   source: string;
@@ -67,6 +70,8 @@ export interface EDL {
   segments: Segment[];
   captions: CaptionConfig;
   tracks: EDLTracks;
+  /** Color look; defaults to "none". */
+  filter: VideoFilterId;
 }
 
 /** A video source the renderer can read (file in browser memory, or a URL). */
@@ -93,5 +98,6 @@ export function emptyEDL(source: string, aspectRatio: AspectRatio = "9:16"): EDL
     segments: [],
     captions: { enabled: true, style: "bold-bottom", color: "#FFFFFF" },
     tracks: { music: [], images: [] },
+    filter: "none",
   };
 }

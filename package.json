@@ -12,6 +12,7 @@
     "test:e2e": "node e2e/export.mjs",
     "test:e2e:captions": "node e2e/verify-captions.mjs",
     "test:e2e:media": "node e2e/verify-media.mjs",
+    "test:e2e:filter": "node e2e/verify-filter.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

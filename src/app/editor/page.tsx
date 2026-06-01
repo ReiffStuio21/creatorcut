@@ -4,11 +4,13 @@ import { PreviewPlayer } from "@/components/editor/preview-player";
 import { TranscriptPanel } from "@/components/editor/transcript-panel";
 import { CaptionsPanel } from "@/components/editor/captions-panel";
 import { ExportPanel } from "@/components/editor/export-panel";
+import { LookPanel } from "@/components/editor/look-panel";
 import { HeaderExportButton } from "@/components/editor/header-export-button";
+import { OnboardingHint } from "@/components/editor/onboarding-hint";
 
 /**
- * Editor — the three-panel layout from PLAN.md §4.
- * Left: media tray. Center: preview + transcript editor. Right: captions + export.
+ * Editor — the three-panel layout from PLAN.md §4 (stacks on narrow screens).
+ * Left: media tray. Center: preview + transcript editor. Right: look, captions, export.
  */
 export default function EditorPage() {
   return (
@@ -18,28 +20,36 @@ export default function EditorPage() {
           <Link href="/" className="text-sm font-semibold tracking-tight">
             CreatorCut
           </Link>
-          <span className="text-xs text-foreground/40">Untitled project</span>
+          <span className="hidden text-xs text-foreground/40 sm:inline">
+            Untitled project
+          </span>
         </div>
         <HeaderExportButton />
       </header>
 
-      <div className="grid flex-1 grid-cols-[220px_1fr_300px] divide-x divide-foreground/10">
-        {/* Left — media tray (Phase 1 upload; music/images Phase 5) */}
+      <OnboardingHint />
+
+      <div className="flex flex-1 flex-col divide-y divide-foreground/10 lg:grid lg:grid-cols-[220px_1fr_300px] lg:divide-x lg:divide-y-0">
+        {/* Left — media tray (upload; music/images) */}
         <aside className="flex flex-col gap-3 p-4">
           <PanelLabel>Media</PanelLabel>
           <MediaPanel />
         </aside>
 
-        {/* Center — preview + transcript (Phases 1–3) */}
+        {/* Center — preview + transcript */}
         <section className="flex flex-col gap-4 p-4">
           <PreviewPlayer />
-          <div className="flex-1 rounded-xl border border-foreground/10 p-4">
+          <div className="min-h-48 flex-1 rounded-xl border border-foreground/10 p-4">
             <TranscriptPanel />
           </div>
         </section>
 
-        {/* Right — captions + cost meter (Phases 4 & 4d) */}
+        {/* Right — look, captions, export */}
         <aside className="flex flex-col gap-4 p-4">
+          <div>
+            <PanelLabel>Look</PanelLabel>
+            <LookPanel />
+          </div>
           <div>
             <PanelLabel>Captions</PanelLabel>
             <CaptionsPanel />

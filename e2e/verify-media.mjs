@@ -51,7 +51,7 @@ try {
 
   const b64 = fs.readFileSync("/tmp/cc_media.mp4").toString("base64");
   const result = await page.evaluate(
-    async ({ b64, W, H }) => {
+    async ({ b64, W }) => {
       const ff = window.__ccFFmpeg;
       if (!ff) throw new Error("app ffmpeg not loaded");
       const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -80,7 +80,7 @@ try {
       await ff.deleteFile("f.raw").catch(() => {});
       return { hasAudio, magenta };
     },
-    { b64, W, H },
+    { b64, W },
   );
   await page.close();
 

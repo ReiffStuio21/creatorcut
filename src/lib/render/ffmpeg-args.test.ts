@@ -74,6 +74,13 @@ describe("ffmpegArgsForExport", () => {
     expect(fc).toContain("[ov0]null[outv]");
   });
 
+  it("applies a color filter to the base video before captions", () => {
+    const args = ffmpegArgsForExport(edl(), { videoFilter: "hue=s=0" });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[vcat]hue=s=0[vf]");
+    expect(fc).toContain("[vf]null[outv]");
+  });
+
   it("orders inputs video → music → images", () => {
     const args = ffmpegArgsForExport(edl(), {
       music: { path: "song.mp3", volume: 0.5 },

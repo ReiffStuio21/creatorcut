@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import type { Transcript } from "@/lib/transcription/provider";
-import type { AspectRatio, CaptionConfig, EDL } from "@/lib/edl/types";
+import type {
+  AspectRatio,
+  CaptionConfig,
+  EDL,
+  VideoFilterId,
+} from "@/lib/edl/types";
 import { edlFromTranscript } from "@/lib/edl/from-transcript";
 import {
   applyCleanup,
@@ -66,6 +71,9 @@ interface EditorState {
   music: MusicAsset | null;
   images: ImageAsset[];
 
+  // Color look (Phase 7)
+  filter: VideoFilterId;
+
   // Export (Phase 6) — WasmRenderer turns the EDL into a downloadable MP4
   exportStep: StepState;
   exportStage: "loading" | "encoding" | null;
@@ -89,6 +97,7 @@ interface EditorState {
   addImage: (file: File) => void;
   setImagePosition: (id: string, x: number, y: number) => void;
   removeImage: (id: string) => void;
+  setFilter: (filter: VideoFilterId) => void;
   runExport: () => Promise<void>;
   setVideoEl: (el: HTMLVideoElement | null) => void;
   seekTo: (seconds: number) => void;
@@ -103,6 +112,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   aspectRatio: "9:16",
   music: null,
   images: [],
+  filter: "none",
   exportStep: idleStep,
   exportStage: null,
   exportProgress: 0,
@@ -236,8 +246,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return { images: s.images.filter((im) => im.id !== id) };
     }),
 
+  setFilter: (filter) => set({ filter }),
+
   runExport: async () => {
-    const { video, edl, music, images } = get();
+    const { video, edl, music, images, filter } = get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
     const prevUrl = get().exportUrl;
@@ -255,6 +267,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const outDur = outputDuration(edl);
       const edlForExport: EDL = {
         ...edl,
+        filter,
         tracks: {
           music: music
             ? [{ src: music.url, start: 0, volume: music.volume }]
@@ -326,6 +339,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       edl: null,
       music: null,
       images: [],
+      filter: "none",
       exportStep: idleStep,
       exportStage: null,
       exportProgress: 0,

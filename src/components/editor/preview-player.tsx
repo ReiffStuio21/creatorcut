@@ -5,6 +5,7 @@ import { useEditorStore } from "@/lib/store/editor";
 import { skipToKept, sourceToOutputTime } from "@/lib/edl/operations";
 import { activeCue, buildCaptionCues } from "@/lib/captions/cues";
 import type { CaptionStyle } from "@/lib/edl/types";
+import { getFilter } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
 const STYLE_CLASSES: Record<CaptionStyle, string> = {
@@ -23,6 +24,7 @@ export function PreviewPlayer() {
   const edl = useEditorStore((s) => s.edl);
   const music = useEditorStore((s) => s.music);
   const images = useEditorStore((s) => s.images);
+  const filter = useEditorStore((s) => s.filter);
   const setMetadata = useEditorStore((s) => s.setMetadata);
   const setVideoEl = useEditorStore((s) => s.setVideoEl);
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -96,6 +98,7 @@ export function PreviewPlayer() {
         controls
         playsInline
         className="h-full w-full"
+        style={{ filter: getFilter(filter).css || undefined }}
         onLoadedMetadata={(e) => {
           const el = e.currentTarget;
           setMetadata({

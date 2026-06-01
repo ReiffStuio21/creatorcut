@@ -64,6 +64,8 @@ export interface ExportOptions {
   images?: ImageInput[];
   /** Output length in seconds — used to bound the music track. */
   outputSeconds?: number;
+  /** FFmpeg color-filter chain applied to the base video (Phase 7). */
+  videoFilter?: string;
 }
 
 /**
@@ -72,7 +74,14 @@ export interface ExportOptions {
  */
 export function ffmpegArgsForExport(
   edl: EDL,
-  { withAudio = true, captions, music, images = [], outputSeconds }: ExportOptions = {},
+  {
+    withAudio = true,
+    captions,
+    music,
+    images = [],
+    outputSeconds,
+    videoFilter,
+  }: ExportOptions = {},
 ): string[] {
   const kept = toKeptSegments(edl);
   if (kept.length === 0) {
@@ -110,8 +119,12 @@ export function ffmpegArgsForExport(
 
   const chain = [...parts, concat];
 
-  // Video post-chain: captions burn → image overlays → [outv].
+  // Video post-chain: color filter → captions burn → image overlays → [outv].
   let v = "[vcat]";
+  if (videoFilter) {
+    chain.push(`${v}${videoFilter}[vf]`);
+    v = "[vf]";
+  }
   if (captions) {
     chain.push(
       `${v}subtitles=${captions.srtFile}:fontsdir=${captions.fontsDir}:` +

@@ -17,6 +17,7 @@ import {
   OUTPUT_NAME,
 } from "./ffmpeg-args";
 import { buildForceStyle, buildOutputCues, toSrt } from "@/lib/captions/srt";
+import { getFilter } from "@/lib/filters";
 
 // A real TTF (family "Roboto") for libass to burn captions; fetched once.
 const FONT_URL =
@@ -85,7 +86,14 @@ export class WasmRenderer implements Renderer {
         }),
       );
 
-      const args = ffmpegArgsForExport(edl, { withAudio, captions, music, images });
+      const videoFilter = getFilter(edl.filter).ffmpeg || undefined;
+      const args = ffmpegArgsForExport(edl, {
+        withAudio,
+        captions,
+        music,
+        images,
+        videoFilter,
+      });
 
       this.hooks.onStage?.("encoding");
       await ffmpeg.exec(args);
