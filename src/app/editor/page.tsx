@@ -6,13 +6,21 @@ import { CaptionsPanel } from "@/components/editor/captions-panel";
 import { ExportPanel } from "@/components/editor/export-panel";
 import { LookPanel } from "@/components/editor/look-panel";
 import { HeaderExportButton } from "@/components/editor/header-export-button";
+import { SaveButton } from "@/components/editor/save-button";
+import { ProjectLoader } from "@/components/editor/project-loader";
 import { OnboardingHint } from "@/components/editor/onboarding-hint";
 
 /**
  * Editor — the three-panel layout from PLAN.md §4 (stacks on narrow screens).
  * Left: media tray. Center: preview + transcript editor. Right: look, captions, export.
  */
-export default function EditorPage() {
+export default async function EditorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ project?: string }>;
+}) {
+  const { project } = await searchParams;
+
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-foreground/10 px-4 py-3">
@@ -20,13 +28,20 @@ export default function EditorPage() {
           <Link href="/" className="text-sm font-semibold tracking-tight">
             CreatorCut
           </Link>
-          <span className="hidden text-xs text-foreground/40 sm:inline">
-            Untitled project
-          </span>
+          <Link
+            href="/dashboard"
+            className="hidden text-xs text-foreground/50 hover:text-foreground sm:inline"
+          >
+            Dashboard
+          </Link>
         </div>
-        <HeaderExportButton />
+        <div className="flex items-center gap-2">
+          <SaveButton />
+          <HeaderExportButton />
+        </div>
       </header>
 
+      {project && <ProjectLoader projectId={project} />}
       <OnboardingHint />
 
       <div className="flex flex-1 flex-col divide-y divide-foreground/10 lg:grid lg:grid-cols-[220px_1fr_300px] lg:divide-x lg:divide-y-0">

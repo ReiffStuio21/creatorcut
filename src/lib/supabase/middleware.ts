@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/auth/callback",
+  "/editor", // the editor is usable without an account (save/load needs one)
 ];
 
 export async function updateSession(request: NextRequest) {

@@ -80,6 +80,9 @@ interface EditorState {
   exportProgress: number; // 0..1
   exportUrl: string | null; // object URL of the finished MP4
 
+  // Persistence (Supabase) — set when a saved project is loaded/saved
+  projectId: string | null;
+
   // preview wiring: the live <video> element, registered by PreviewPlayer
   videoEl: HTMLVideoElement | null;
 
@@ -98,6 +101,13 @@ interface EditorState {
   setImagePosition: (id: string, x: number, y: number) => void;
   removeImage: (id: string) => void;
   setFilter: (filter: VideoFilterId) => void;
+  setProjectId: (id: string) => void;
+  hydrateProject: (p: {
+    id: string;
+    file: File;
+    meta: { fileName?: string; fileSize?: number; duration?: number; width?: number; height?: number };
+    edl: EDL;
+  }) => void;
   runExport: () => Promise<void>;
   setVideoEl: (el: HTMLVideoElement | null) => void;
   seekTo: (seconds: number) => void;
@@ -113,6 +123,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   music: null,
   images: [],
   filter: "none",
+  projectId: null,
   exportStep: idleStep,
   exportStage: null,
   exportProgress: 0,
@@ -139,6 +150,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       transcript: null,
       transcribe: idleStep,
       edl: null,
+      projectId: null,
       exportStep: idleStep,
       exportStage: null,
       exportProgress: 0,
@@ -265,6 +277,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setFilter: (filter) => set({ filter }),
 
+  setProjectId: (id) => set({ projectId: id }),
+
+  hydrateProject: ({ id, file, meta, edl }) => {
+    const s = get();
+    if (s.video) URL.revokeObjectURL(s.video.url);
+    if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
+    if (s.music) URL.revokeObjectURL(s.music.url);
+    s.images.forEach((im) => URL.revokeObjectURL(im.url));
+    set({
+      video: {
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        file,
+        fileName: meta.fileName ?? file.name,
+        fileSize: meta.fileSize ?? file.size,
+        duration: meta.duration ?? 0,
+        width: meta.width ?? 0,
+        height: meta.height ?? 0,
+      },
+      edl,
+      filter: edl.filter ?? "none",
+      transcript: null,
+      transcribe: doneStep(),
+      music: null,
+      images: [],
+      projectId: id,
+      exportStep: idleStep,
+      exportStage: null,
+      exportProgress: 0,
+      exportUrl: null,
+    });
+  },
+
   runExport: async () => {
     const { video, edl, music, images, filter } = get();
     if (!video || !edl || get().exportStep.status === "running") return;
@@ -357,6 +402,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       music: null,
       images: [],
       filter: "none",
+      projectId: null,
       exportStep: idleStep,
       exportStage: null,
       exportProgress: 0,
