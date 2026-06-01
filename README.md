@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CreatorCut
 
-## Getting Started
+> **Edit your video by editing its transcript.** Beginner-first AI video editor — upload a clip, delete the words you don't want, clean up filler words, auto-caption, and export an MP4. No timeline required.
 
-First, run the development server:
+**Live demo:** _(coming at Phase 8 — deploy to Vercel)_
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Why it's interesting (the architecture)
+
+Four ideas make this real engineering, not glued-together API calls (see [PLAN.md](PLAN.md) §4):
+
+1. **One edit model (the EDL).** An [Edit Decision List](src/lib/edl/types.ts) is the single source of truth. The preview player and every renderer read the *same* EDL, so an edit produces identical output in the browser or on a server. Its operations are [pure functions](src/lib/edl/operations.ts) with a real [test suite](src/lib/edl/operations.test.ts).
+2. **Swappable renderers.** One [`Renderer` interface](src/lib/render/renderer.ts), two backends: `WasmRenderer` (FFmpeg.wasm, MVP) and `ServerRenderer` (Phase 2). Swap the implementation, not the app.
+3. **An explicit AI pipeline.** transcribe → detect fillers/silence → caption, each step retryable and re-runnable independently.
+4. **A cost meter.** Tracks estimated API spend per project.
+
+## Stack
+
+Next.js 16 (App Router, Turbopack) · TypeScript · Tailwind v4 · Supabase (Auth/Postgres/Storage) · Zustand · FFmpeg.wasm (Phase 6) · Anthropic SDK.
+
+## Develop
+
+```sh
+cp .env.local.example .env.local   # fill in Supabase + API keys (optional for first run)
+npm install
+npm run dev                        # http://localhost:3000
+npm test                           # EDL unit tests
+npm run typecheck
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs without Supabase configured (landing + editor shell are viewable); auth gating activates once env vars are set.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Status
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Phase 0 (scaffold) complete. Build order and full scope live in **[PLAN.md](PLAN.md)** — the single source of truth.
