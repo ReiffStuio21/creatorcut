@@ -154,11 +154,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!video || get().transcribe.status === "running") return;
     set({ transcribe: runningStep() });
     try {
-      const res = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ durationSeconds: video.duration }),
-      });
+      // When real transcription is enabled, send compact extracted audio so the
+      // server can call the provider; otherwise post duration for the dev mock.
+      const realEnabled =
+        process.env.NEXT_PUBLIC_TRANSCRIPTION_ENABLED === "true";
+      let res: Response;
+      if (realEnabled) {
+        const { extractAudioMp3 } = await import(
+          "@/lib/transcription/extract-audio"
+        );
+        const audio = await extractAudioMp3(video.url);
+        res = await fetch("/api/transcribe", {
+          method: "POST",
+          headers: { "Content-Type": "audio/mpeg" },
+          body: audio as BodyInit,
+        });
+      } else {
+        res = await fetch("/api/transcribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ durationSeconds: video.duration }),
+        });
+      }
       if (!res.ok) throw new Error(`Transcription failed (${res.status})`);
       const transcript: Transcript = await res.json();
       set({

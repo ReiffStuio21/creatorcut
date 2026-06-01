@@ -78,3 +78,49 @@ export function generateMockTranscript(durationSeconds: number): Transcript {
 function round(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+const FILLER_WORDS = new Set([
+  "um", "uh", "umm", "uhh", "mm", "hmm", "er", "ah", "like",
+]);
+
+/** Minimal shape of a Deepgram /v1/listen response (word-level). */
+export interface DeepgramResponse {
+  results?: {
+    channels?: {
+      alternatives?: {
+        words?: { word: string; start: number; end: number; punctuated_word?: string }[];
+      }[];
+    }[];
+  };
+}
+
+/**
+ * Map a Deepgram response into our Transcript shape. Tags filler words and
+ * synthesizes "silence" segments for gaps so one-click cleanup works on real
+ * audio just like it does on the mock. Pure → unit-testable.
+ */
+export function mapDeepgramResponse(
+  json: DeepgramResponse,
+  { silenceGap = 0.7 }: { silenceGap?: number } = {},
+): Transcript {
+  const dgWords = json?.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
+  const words: TranscriptWord[] = [];
+  let prevEnd: number | null = null;
+
+  for (const w of dgWords) {
+    if (prevEnd !== null && w.start - prevEnd > silenceGap) {
+      words.push({ start: round(prevEnd), end: round(w.start), text: "—", kind: "silence" });
+    }
+    const bare = (w.word ?? "").toLowerCase().replace(/[.,!?]/g, "");
+    const text = (w.punctuated_word ?? w.word ?? "").trim();
+    words.push({
+      start: round(w.start),
+      end: round(w.end),
+      text,
+      ...(FILLER_WORDS.has(bare) ? { kind: "filler" as const } : {}),
+    });
+    prevEnd = w.end;
+  }
+
+  return { words, provider: "deepgram", mock: false };
+}
