@@ -1,5 +1,12 @@
 import { create } from "zustand";
 import type { Transcript } from "@/lib/transcription/provider";
+import type { AspectRatio, EDL } from "@/lib/edl/types";
+import { edlFromTranscript } from "@/lib/edl/from-transcript";
+import {
+  applyCleanup,
+  setAllKept,
+  setSegmentKept,
+} from "@/lib/edl/operations";
 import {
   doneStep,
   errorStep,
@@ -32,12 +39,19 @@ interface EditorState {
   transcript: Transcript | null;
   transcribe: StepState;
 
+  // The edit decision list — single source of truth for the cut (PLAN.md §4a)
+  edl: EDL | null;
+  aspectRatio: AspectRatio;
+
   // preview wiring: the live <video> element, registered by PreviewPlayer
   videoEl: HTMLVideoElement | null;
 
   loadFile: (file: File) => void;
   setMetadata: (meta: { duration: number; width: number; height: number }) => void;
   runTranscribe: () => Promise<void>;
+  toggleSegment: (id: string) => void;
+  cleanup: () => void;
+  restoreAll: () => void;
   setVideoEl: (el: HTMLVideoElement | null) => void;
   seekTo: (seconds: number) => void;
   reset: () => void;
@@ -47,6 +61,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   video: null,
   transcript: null,
   transcribe: idleStep,
+  edl: null,
+  aspectRatio: "9:16",
   videoEl: null,
 
   loadFile: (file) => {
@@ -63,9 +79,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         width: 0,
         height: 0,
       },
-      // new source → previous transcript no longer applies
+      // new source → previous transcript/edit no longer applies
       transcript: null,
       transcribe: idleStep,
+      edl: null,
     });
   },
 
@@ -84,13 +101,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
       if (!res.ok) throw new Error(`Transcription failed (${res.status})`);
       const transcript: Transcript = await res.json();
-      set({ transcript, transcribe: doneStep() });
+      set({
+        transcript,
+        edl: edlFromTranscript(transcript, video.id, get().aspectRatio),
+        transcribe: doneStep(),
+      });
     } catch (e) {
       set({
         transcribe: errorStep(e instanceof Error ? e.message : "Unknown error"),
       });
     }
   },
+
+  toggleSegment: (id) =>
+    set((s) => {
+      if (!s.edl) return s;
+      const seg = s.edl.segments.find((x) => x.id === id);
+      if (!seg) return s;
+      return { edl: setSegmentKept(s.edl, id, !seg.kept) };
+    }),
+
+  cleanup: () => set((s) => (s.edl ? { edl: applyCleanup(s.edl) } : s)),
+
+  restoreAll: () => set((s) => (s.edl ? { edl: setAllKept(s.edl, true) } : s)),
 
   setVideoEl: (el) => set({ videoEl: el }),
 
@@ -105,6 +138,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   reset: () => {
     const prev = get().video;
     if (prev) URL.revokeObjectURL(prev.url);
-    set({ video: null, transcript: null, transcribe: idleStep });
+    set({ video: null, transcript: null, transcribe: idleStep, edl: null });
   },
 }));

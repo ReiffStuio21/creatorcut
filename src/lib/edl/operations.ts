@@ -49,6 +49,26 @@ export function applyCleanup(edl: EDL): EDL {
   return applySilenceRemoval(applyFillerRemoval(edl));
 }
 
+/** Mark every segment kept (true) or removed (false) — e.g. "Restore all". */
+export function setAllKept(edl: EDL, kept: boolean): EDL {
+  return { ...edl, segments: edl.segments.map((s) => ({ ...s, kept })) };
+}
+
+/**
+ * Given a SOURCE time, return the nearest source time that is part of the final
+ * cut: the same time if it falls inside a kept segment, otherwise the start of
+ * the next kept segment. Returns null if nothing kept remains after it. The
+ * preview player uses this to skip removed segments during playback.
+ */
+export function skipToKept(edl: EDL, sourceTime: number): number | null {
+  for (const s of toKeptSegments(edl)) {
+    if (sourceTime < s.end) {
+      return Math.max(sourceTime, s.start);
+    }
+  }
+  return null;
+}
+
 /**
  * Map an OUTPUT-timeline time back to the SOURCE segment/time, so the preview
  * player can seek the underlying `<video>` while playing only kept segments.

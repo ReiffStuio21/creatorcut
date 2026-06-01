@@ -10,9 +10,12 @@ import {
   applyFillerRemoval,
   outputDuration,
   outputTimeToSource,
+  setAllKept,
   setSegmentKept,
+  skipToKept,
   toKeptSegments,
 } from "./operations";
+import { edlFromTranscript } from "./from-transcript";
 import { emptyEDL, type EDL } from "./types";
 
 function sampleEDL(): EDL {
@@ -58,5 +61,42 @@ describe("EDL operations", () => {
     // 5s into output = 1s into s3, which starts at source 5 → source 6
     expect(outputTimeToSource(edl, 5)?.sourceTime).toBe(6);
     expect(outputTimeToSource(edl, 99)).toBeNull();
+  });
+
+  it("setAllKept restores or removes everything", () => {
+    expect(toKeptSegments(setAllKept(applyCleanup(sampleEDL()), true))).toHaveLength(4);
+    expect(toKeptSegments(setAllKept(sampleEDL(), false))).toHaveLength(0);
+  });
+
+  it("skipToKept stays inside kept regions and jumps over removed ones", () => {
+    const edl = applyCleanup(sampleEDL()); // kept source ranges: [0-4], [5-9]
+    expect(skipToKept(edl, 2)).toBe(2); // inside kept s1
+    expect(skipToKept(edl, 4.5)).toBe(5); // inside removed filler → jump to s3 start
+    expect(skipToKept(edl, 10)).toBeNull(); // past the last kept segment
+  });
+});
+
+describe("edlFromTranscript", () => {
+  it("maps words to kept segments and carries filler/silence reasons", () => {
+    const edl = edlFromTranscript(
+      {
+        provider: "mock",
+        mock: true,
+        words: [
+          { start: 0, end: 1, text: "hello" },
+          { start: 1, end: 1.4, text: "um", kind: "filler" },
+          { start: 1.4, end: 2.2, text: "—", kind: "silence" },
+        ],
+      },
+      "vid-1",
+      "16:9",
+    );
+    expect(edl.aspectRatio).toBe("16:9");
+    expect(edl.segments).toHaveLength(3);
+    expect(edl.segments.every((s) => s.kept)).toBe(true);
+    expect(edl.segments[0].reason).toBeUndefined();
+    expect(edl.segments[1].reason).toBe("filler");
+    // a fresh transcript-built EDL cleans up to drop the filler + silence
+    expect(toKeptSegments(applyCleanup(edl)).map((s) => s.text)).toEqual(["hello"]);
   });
 });
