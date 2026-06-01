@@ -70,6 +70,25 @@ export function skipToKept(edl: EDL, sourceTime: number): number | null {
 }
 
 /**
+ * Map a SOURCE time to its position in the OUTPUT (post-cut) timeline — the
+ * inverse of {@link outputTimeToSource}. Used to place burned-in captions, whose
+ * cues are authored against source time, onto the concatenated output.
+ */
+export function sourceToOutputTime(edl: EDL, sourceTime: number): number {
+  let out = 0;
+  for (const s of toKeptSegments(edl)) {
+    if (sourceTime >= s.end) {
+      out += s.end - s.start;
+    } else if (sourceTime <= s.start) {
+      return out; // in a removed gap just before this kept segment
+    } else {
+      return out + (sourceTime - s.start);
+    }
+  }
+  return out; // at/after the end of the cut
+}
+
+/**
  * Map an OUTPUT-timeline time back to the SOURCE segment/time, so the preview
  * player can seek the underlying `<video>` while playing only kept segments.
  * Returns null if the time is past the end of the output.

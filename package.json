@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node e2e/export.mjs",
+    "test:e2e:captions": "node e2e/verify-captions.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

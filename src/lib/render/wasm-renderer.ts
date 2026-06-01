@@ -12,9 +12,18 @@ import { getFFmpeg } from "./ffmpeg";
 import {
   estimateRenderCost,
   ffmpegArgsForExport,
+  type CaptionBurn,
   INPUT_NAME,
   OUTPUT_NAME,
 } from "./ffmpeg-args";
+import { buildForceStyle, buildOutputCues, toSrt } from "@/lib/captions/srt";
+
+// A real TTF (family "Roboto") for libass to burn captions; fetched once.
+const FONT_URL =
+  "https://cdn.jsdelivr.net/npm/@expo-google-fonts/roboto/Roboto_400Regular.ttf";
+const FONTS_DIR = "fonts";
+const FONT_PATH = `${FONTS_DIR}/Roboto_400Regular.ttf`;
+const SRT_PATH = "subs.srt";
 
 export interface WasmRenderHooks {
   /** "loading" = fetching/booting the FFmpeg core; "encoding" = running it. */
@@ -43,7 +52,22 @@ export class WasmRenderer implements Renderer {
 
       // Silent clips have no [0:a] stream; probe so the graph matches the source.
       const withAudio = await probeHasAudio(ffmpeg);
-      const args = ffmpegArgsForExport(edl, { withAudio });
+
+      // Burn captions into the file when enabled and there are cues to show.
+      let captions: CaptionBurn | undefined;
+      const outCues = edl.captions.enabled ? buildOutputCues(edl) : [];
+      if (outCues.length > 0) {
+        await ffmpeg.createDir(FONTS_DIR).catch(() => {});
+        await ffmpeg.writeFile(FONT_PATH, await fetchFile(FONT_URL));
+        await ffmpeg.writeFile(SRT_PATH, new TextEncoder().encode(toSrt(outCues)));
+        captions = {
+          srtFile: SRT_PATH,
+          fontsDir: FONTS_DIR,
+          forceStyle: buildForceStyle(edl.captions),
+        };
+      }
+
+      const args = ffmpegArgsForExport(edl, { withAudio, captions });
 
       this.hooks.onStage?.("encoding");
       await ffmpeg.exec(args);
@@ -59,6 +83,7 @@ export class WasmRenderer implements Renderer {
       ffmpeg.off("progress", onProgress);
       await ffmpeg.deleteFile(INPUT_NAME).catch(() => {});
       await ffmpeg.deleteFile(OUTPUT_NAME).catch(() => {});
+      await ffmpeg.deleteFile(SRT_PATH).catch(() => {});
     }
   }
 

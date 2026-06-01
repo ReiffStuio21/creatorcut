@@ -114,8 +114,10 @@ export function ExportPanel() {
       )}
 
       <p className="border-t border-foreground/10 pt-2 text-[11px] text-foreground/40">
-        {cost.breakdown[0]}. Captions show in the preview; burning them into the
-        file is the next step.
+        {cost.breakdown[0]}.
+        {edl.captions.enabled
+          ? " Captions are burned into the exported file."
+          : " Captions are off — turn them on to burn them in."}
       </p>
     </div>
   );

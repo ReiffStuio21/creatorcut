@@ -13,6 +13,7 @@ import {
   setAllKept,
   setSegmentKept,
   skipToKept,
+  sourceToOutputTime,
   toKeptSegments,
 } from "./operations";
 import { edlFromTranscript } from "./from-transcript";
@@ -73,6 +74,14 @@ describe("EDL operations", () => {
     expect(skipToKept(edl, 2)).toBe(2); // inside kept s1
     expect(skipToKept(edl, 4.5)).toBe(5); // inside removed filler → jump to s3 start
     expect(skipToKept(edl, 10)).toBeNull(); // past the last kept segment
+  });
+
+  it("sourceToOutputTime collapses removed time", () => {
+    const edl = applyCleanup(sampleEDL()); // kept [0-4]→out[0-4], [5-9]→out[4-8]
+    expect(sourceToOutputTime(edl, 2)).toBe(2); // inside first kept segment
+    expect(sourceToOutputTime(edl, 4.5)).toBe(4); // inside removed gap → clamp
+    expect(sourceToOutputTime(edl, 6)).toBe(5); // 1s into s3 → 4 + 1
+    expect(sourceToOutputTime(edl, 99)).toBe(8); // past end → total duration
   });
 });
 

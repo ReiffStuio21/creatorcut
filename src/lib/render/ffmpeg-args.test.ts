@@ -21,7 +21,7 @@ describe("ffmpegArgsForExport", () => {
     expect(fc).toContain("trim=start=0:end=4");
     expect(fc).toContain("trim=start=5:end=9");
     expect(fc).not.toContain("end=5,"); // the filler segment is not trimmed
-    expect(fc).toContain("concat=n=2:v=1:a=1[outv][outa]");
+    expect(fc).toContain("concat=n=2:v=1:a=1[vcat][outa]");
   });
 
   it("scales/crops to the EDL's aspect ratio", () => {
@@ -37,9 +37,18 @@ describe("ffmpegArgsForExport", () => {
     const args = ffmpegArgsForExport(edl(), { withAudio: false });
     const fc = args[args.indexOf("-filter_complex") + 1];
     expect(fc).not.toContain("[0:a]");
-    expect(fc).toContain("concat=n=2:v=1:a=0[outv]");
+    expect(fc).toContain("concat=n=2:v=1:a=0[vcat]");
     expect(args).toContain("-an");
     expect(args).not.toContain("[outa]");
+  });
+
+  it("adds the subtitles filter when captions are requested", () => {
+    const args = ffmpegArgsForExport(edl(), {
+      captions: { srtFile: "subs.srt", fontsDir: "fonts", forceStyle: "FontSize=20" },
+    });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[vcat]subtitles=subs.srt:fontsdir=fonts:force_style='FontSize=20'[outv]");
+    expect(fc).not.toContain("[vcat]null[outv]");
   });
 
   it("throws when nothing is kept", () => {

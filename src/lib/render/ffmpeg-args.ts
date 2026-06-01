@@ -26,6 +26,15 @@ export const TARGET_SIZES: Record<AspectRatio, TargetSize> = {
 export const INPUT_NAME = "input.mp4";
 export const OUTPUT_NAME = "output.mp4";
 
+export interface CaptionBurn {
+  /** SRT path written into the FFmpeg FS (OUTPUT-time cues). */
+  srtFile: string;
+  /** Directory in the FFmpeg FS holding the caption font. */
+  fontsDir: string;
+  /** ASS force_style string (see buildForceStyle). */
+  forceStyle: string;
+}
+
 export interface ExportOptions {
   /**
    * Whether the source has an audio stream. When false, the graph omits all
@@ -34,6 +43,8 @@ export interface ExportOptions {
    * source and passes the right value.
    */
   withAudio?: boolean;
+  /** When set, burn captions into the video via the `subtitles` filter. */
+  captions?: CaptionBurn;
 }
 
 /**
@@ -42,7 +53,7 @@ export interface ExportOptions {
  */
 export function ffmpegArgsForExport(
   edl: EDL,
-  { withAudio = true }: ExportOptions = {},
+  { withAudio = true, captions }: ExportOptions = {},
 ): string[] {
   const kept = toKeptSegments(edl);
   if (kept.length === 0) {
@@ -68,10 +79,22 @@ export function ffmpegArgsForExport(
     concatInputs.push(withAudio ? `[v${i}][a${i}]` : `[v${i}]`);
   });
 
+  // Concatenate to [vcat]; if burning captions, run [vcat] through subtitles.
   const concat = withAudio
-    ? `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=1[outv][outa]`
-    : `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=0[outv]`;
-  const filterComplex = [...parts, concat].join(";");
+    ? `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=1[vcat][outa]`
+    : `${concatInputs.join("")}concat=n=${kept.length}:v=1:a=0[vcat]`;
+
+  const chain = [...parts, concat];
+  if (captions) {
+    chain.push(
+      `[vcat]subtitles=${captions.srtFile}:fontsdir=${captions.fontsDir}:` +
+        `force_style='${captions.forceStyle}'[outv]`,
+    );
+  } else {
+    // no caption pass → rename [vcat] to [outv] with a no-op copy
+    chain.push(`[vcat]null[outv]`);
+  }
+  const filterComplex = chain.join(";");
 
   const args = [
     "-i",

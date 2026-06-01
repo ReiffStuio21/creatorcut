@@ -24,6 +24,10 @@ export async function getFFmpeg(): Promise<FFmpeg> {
         wasmURL: await toBlobURL(`${BASE_URL}/ffmpeg-core.wasm`, "application/wasm"),
       });
       instance = ffmpeg;
+      // Dev-only handle so e2e tests can reuse the (bundler-resolved) worker.
+      if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+        (window as unknown as { __ccFFmpeg?: FFmpeg }).__ccFFmpeg = ffmpeg;
+      }
       return ffmpeg;
     })().catch((e) => {
       console.error("[ffmpeg] load failed:", e);
