@@ -16,7 +16,8 @@
     "test:e2e:supabase": "node e2e/verify-supabase.mjs",
     "test:e2e:persist": "node e2e/verify-media-persist.mjs",
     "typecheck": "tsc --noEmit",
-    "test:e2e:transition": "node e2e/verify-transition.mjs"
+    "test:e2e:transition": "node e2e/verify-transition.mjs",
+    "test:e2e:broll": "node e2e/verify-broll.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",
