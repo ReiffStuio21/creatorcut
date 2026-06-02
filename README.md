@@ -102,9 +102,9 @@ See [`.env.local.example`](.env.local.example). When you wire real services:
 
 ## Status & roadmap
 
-**Done (verified live):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · **b-roll cutaways** · color looks · **fade transitions** · MP4 export · **server-side rendering** (ffmpeg worker on Fly, for long clips) · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive UI + onboarding.
+**Done (verified live):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · **b-roll cutaways** · color looks · **fade transitions** · MP4 export · **server-side rendering** with full parity (ffmpeg worker on Fly, for long clips) · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive UI + onboarding.
 
-**Next:** full media parity on the server renderer (music/logo/b-roll) · persist b-roll with projects · stock media · render job queue for very long clips.
+**Next:** persist b-roll with projects · stock media · a render job queue for very long clips.
 
 The full build plan and decisions live in **[PLAN.md](PLAN.md)** — the single source of truth.
 
