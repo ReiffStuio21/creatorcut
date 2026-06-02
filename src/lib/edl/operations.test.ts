@@ -16,6 +16,7 @@ import {
   sourceToOutputTime,
   splitSegment,
   toKeptSegments,
+  trimSegment,
 } from "./operations";
 import { edlFromTranscript } from "./from-transcript";
 import { emptyEDL, type EDL } from "./types";
@@ -89,6 +90,18 @@ describe("EDL operations", () => {
     expect(a.text).toBe("Hey everyone"); // first half keeps text
     // no-op at the boundary
     expect(splitSegment(edl, "s1", 0).segments).toHaveLength(4);
+  });
+
+  it("trimSegment clamps against neighbours and minimum length", () => {
+    const edl = sampleEDL(); // s1[0-4] s2[4-5] s3[5-9] s4[9-11]
+    // trim s3 start later, but not past its own end
+    expect(trimSegment(edl, "s3", "start", 6).segments.find((s) => s.id === "s3")!.start).toBe(6);
+    // can't pull s3 start before s2's end (4→ clamps to 5)
+    expect(trimSegment(edl, "s3", "start", 2).segments.find((s) => s.id === "s3")!.start).toBe(5);
+    // can't push s3 end past s4's start (9)
+    expect(trimSegment(edl, "s3", "end", 20).segments.find((s) => s.id === "s3")!.end).toBe(9);
+    // last segment's end bounded by maxTime
+    expect(trimSegment(edl, "s4", "end", 50, 12).segments.find((s) => s.id === "s4")!.end).toBe(12);
   });
 
   it("sourceToOutputTime collapses removed time", () => {

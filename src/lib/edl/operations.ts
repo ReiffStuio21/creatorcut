@@ -88,6 +88,34 @@ export function skipToKept(edl: EDL, sourceTime: number): number | null {
 }
 
 /**
+ * Trim one edge of a segment to a SOURCE time (drag-to-trim). Clamped so it
+ * can't cross the neighbouring segments, invert, or shrink below a minimum.
+ * `maxTime` bounds the right edge of the last segment (the video duration).
+ */
+export function trimSegment(
+  edl: EDL,
+  id: string,
+  edge: "start" | "end",
+  t: number,
+  maxTime?: number,
+): EDL {
+  const i = edl.segments.findIndex((s) => s.id === id);
+  if (i < 0) return edl;
+  const segs = edl.segments;
+  const seg = segs[i];
+  const MIN = 0.05;
+  let { start, end } = seg;
+  if (edge === "start") {
+    const lo = segs[i - 1] ? segs[i - 1].end : 0;
+    start = Math.min(Math.max(t, lo), end - MIN);
+  } else {
+    const hi = segs[i + 1] ? segs[i + 1].start : (maxTime ?? end);
+    end = Math.max(Math.min(t, hi), start + MIN);
+  }
+  return { ...edl, segments: segs.map((x) => (x.id === id ? { ...x, start, end } : x)) };
+}
+
+/**
  * Map a SOURCE time to its position in the OUTPUT (post-cut) timeline — the
  * inverse of {@link outputTimeToSource}. Used to place burned-in captions, whose
  * cues are authored against source time, onto the concatenated output.

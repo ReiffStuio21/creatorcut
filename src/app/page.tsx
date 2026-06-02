@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Scissors, Captions, Wand2, Play, Sparkles } from "lucide-react";
+import { Scissors, Captions, Eye, Mic, Palette, Server, Play, Sparkles, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const FEATURES = [
   {
     icon: Scissors,
     title: "Cut by editing text",
-    body: "Delete a word in the transcript and the video cuts to match. One click removes every “um.”",
+    body: "Delete a word in the transcript and the video cuts to match. One click removes every “um,” or drag-to-trim on the timeline.",
   },
   {
     icon: Captions,
@@ -13,9 +14,53 @@ const FEATURES = [
     body: "Styled captions generated from your speech and baked into the exported MP4.",
   },
   {
-    icon: Wand2,
+    icon: Eye,
+    title: "Remove the background",
+    body: "On-device AI puts you on any color, a blur, or your own backdrop — no green screen, no API, no cost.",
+  },
+  {
+    icon: Mic,
+    title: "AI voiceover",
+    body: "Type a script, pick a voice, and a natural AI narration is generated and mixed into your video.",
+  },
+  {
+    icon: Palette,
     title: "Looks, music & b-roll",
-    body: "Color looks, background music, a logo, and b-roll cutaways — then export, browser or server.",
+    body: "Color looks, auto-enhance, noise removal, background music, a logo, b-roll cutaways, and fade transitions.",
+  },
+  {
+    icon: Server,
+    title: "Export anywhere",
+    body: "Render in your browser instantly, or offload long clips to the cloud renderer. 9:16, 1:1, or 16:9 MP4.",
+  },
+];
+
+const PRICING = [
+  {
+    name: "Free",
+    price: "$0",
+    cta: "Start free",
+    features: ["3 projects", "720p export", "Browser rendering", "Captions, looks & b-roll"],
+    highlight: false,
+  },
+  {
+    name: "Creator",
+    price: "$19",
+    cta: "Get Creator",
+    features: [
+      "Unlimited projects",
+      "1080p, no watermark",
+      "AI transcription + voiceover",
+      "Background removal",
+    ],
+    highlight: true,
+  },
+  {
+    name: "Business",
+    price: "$49",
+    cta: "Get Business",
+    features: ["Everything in Creator", "Cloud rendering for long clips", "Priority processing", "Team seats (soon)"],
+    highlight: false,
   },
 ];
 
@@ -133,6 +178,82 @@ export default function Home() {
               <p className="mt-1.5 text-sm text-foreground/55">{f.body}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* pricing */}
+      <section className="mx-auto w-full max-w-5xl px-6 py-20">
+        <div className="text-center">
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Simple pricing
+          </h2>
+          <p className="mt-3 text-sm text-foreground/55">
+            Start free. Upgrade when you want real AI and HD exports.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          {PRICING.map((tier) => (
+            <div
+              key={tier.name}
+              className={cn(
+                "flex flex-col rounded-2xl p-6",
+                tier.highlight
+                  ? "glass ring-1 ring-accent/50 glow-accent"
+                  : "glass",
+              )}
+            >
+              {tier.highlight && (
+                <span className="mb-3 w-fit rounded-full accent-gradient px-2.5 py-0.5 text-[11px] font-medium text-white">
+                  Most popular
+                </span>
+              )}
+              <h3 className="font-medium">{tier.name}</h3>
+              <p className="mt-2">
+                <span className="text-3xl font-semibold tracking-tight">{tier.price}</span>
+                <span className="text-sm text-foreground/50">/mo</span>
+              </p>
+              <ul className="mt-5 flex flex-1 flex-col gap-2.5 text-sm text-foreground/70">
+                {tier.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className={cn(
+                  "mt-6 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-transform hover:scale-[1.02]",
+                  tier.highlight
+                    ? "accent-gradient text-white glow-accent"
+                    : "border border-foreground/15 hover:bg-foreground/5",
+                )}
+              >
+                {tier.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-center text-[11px] text-foreground/30">
+          Billing isn&apos;t wired up yet — every tier currently runs free during the beta.
+        </p>
+      </section>
+
+      {/* closing CTA */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-24">
+        <div className="glass overflow-hidden rounded-3xl p-10 text-center sm:p-14">
+          <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
+            <span className="text-gradient">Make your next video</span> in minutes.
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-sm text-foreground/55">
+            No timeline to learn. Upload, edit the words, export. That&apos;s it.
+          </p>
+          <Link
+            href="/editor"
+            className="mt-7 inline-block rounded-full accent-gradient px-7 py-3 text-sm font-semibold text-white glow-accent transition-transform hover:scale-[1.03]"
+          >
+            Open the editor →
+          </Link>
         </div>
       </section>
 

@@ -14,6 +14,7 @@ import {
   setAllKept,
   setSegmentKept,
   splitSegment,
+  trimSegment,
 } from "@/lib/edl/operations";
 import {
   doneStep,
@@ -131,6 +132,8 @@ interface EditorState {
   splitAtPlayhead: () => void;
   selectSegment: (id: string | null) => void;
   setVideoVolume: (volume: number) => void;
+  scrub: (t: number) => void;
+  trimSelected: (edge: "start" | "end", t: number) => void;
   setCaptions: (patch: Partial<CaptionConfig>) => void;
   setAspectRatio: (aspectRatio: AspectRatio) => void;
   addMusic: (file: File) => void;
@@ -319,6 +322,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectSegment: (id) => set({ selectedSegmentId: id }),
 
   setVideoVolume: (volume) => set({ videoVolume: volume }),
+
+  scrub: (t) => {
+    const el = get().videoEl;
+    if (el) el.currentTime = t;
+    set({ currentTime: t });
+  },
+
+  trimSelected: (edge, t) =>
+    set((s) =>
+      s.edl && s.selectedSegmentId
+        ? { edl: trimSegment(s.edl, s.selectedSegmentId, edge, t, s.video?.duration) }
+        : s,
+    ),
 
   setCaptions: (patch) =>
     set((s) =>
