@@ -25,7 +25,7 @@ export function OnboardingHint() {
 
   return (
     <div className="flex items-center gap-2 border-b border-foreground/10 bg-foreground/[0.03] px-4 py-2 text-xs text-foreground/60">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full accent-gradient text-[10px] font-semibold text-white">
         {step}
       </span>
       {message}

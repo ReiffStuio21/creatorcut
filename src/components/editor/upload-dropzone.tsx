@@ -49,11 +49,11 @@ export function UploadDropzone() {
         className={cn(
           "flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-8 text-center transition-colors",
           dragging
-            ? "border-foreground/40 bg-foreground/5"
+            ? "border-accent/60 bg-accent/10"
             : "border-foreground/15 hover:border-foreground/30",
         )}
       >
-        <Upload className="h-5 w-5 text-foreground/50" aria-hidden />
+        <Upload className="h-5 w-5 text-accent" aria-hidden />
         <span className="text-sm font-medium">Drop a video here</span>
         <span className="text-xs text-foreground/50">
           or click to browse · {ACCEPTED_LABEL} · up to {MAX_FILE_MB} MB

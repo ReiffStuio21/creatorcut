@@ -52,7 +52,7 @@ export function CaptionsPanel() {
               className={cn(
                 "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                 style === s.value
-                  ? "border-foreground bg-foreground text-background"
+                  ? "border-transparent accent-gradient text-white"
                   : "border-foreground/15 hover:bg-foreground/5",
               )}
             >

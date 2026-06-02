@@ -173,7 +173,7 @@ function ImagesSection() {
                   className={cn(
                     "h-3.5 w-3.5 rounded-sm border",
                     im.x === x && im.y === y
-                      ? "border-foreground bg-foreground"
+                      ? "border-transparent accent-gradient"
                       : "border-foreground/20 hover:bg-foreground/10",
                   )}
                 />

@@ -50,7 +50,7 @@ export function ExportPanel() {
               className={cn(
                 "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                 aspectRatio === r.value
-                  ? "border-foreground bg-foreground text-background"
+                  ? "border-transparent accent-gradient text-white"
                   : "border-foreground/15 hover:bg-foreground/5",
               )}
             >
@@ -77,7 +77,7 @@ export function ExportPanel() {
         type="button"
         onClick={runExport}
         disabled={running}
-        className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-2 rounded-full accent-gradient px-4 py-2 text-sm font-medium text-white glow-accent disabled:opacity-60 disabled:shadow-none"
       >
         {running ? (
           <>
@@ -95,7 +95,7 @@ export function ExportPanel() {
       {running && (
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
           <div
-            className="h-full rounded-full bg-foreground transition-[width] duration-200"
+            className="h-full rounded-full accent-gradient transition-[width] duration-200"
             style={{
               width:
                 stage === "loading" ? "8%" : `${Math.round(progress * 100)}%`,

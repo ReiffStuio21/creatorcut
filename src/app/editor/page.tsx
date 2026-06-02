@@ -23,9 +23,10 @@ export default async function EditorPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-foreground/10 px-4 py-3">
+      <header className="flex items-center justify-between border-b border-foreground/10 bg-panel/40 px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm font-semibold tracking-tight">
+          <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+            <span className="h-2 w-2 rounded-full accent-gradient shadow-[0_0_10px_2px_rgba(124,92,255,0.7)]" />
             CreatorCut
           </Link>
           <Link

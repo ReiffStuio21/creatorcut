@@ -36,7 +36,7 @@ export function LookPanel() {
             className={cn(
               "rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
               filter === f.id
-                ? "border-foreground bg-foreground text-background"
+                ? "border-transparent accent-gradient text-white"
                 : "border-foreground/15 hover:bg-foreground/5",
             )}
           >
@@ -56,7 +56,7 @@ export function LookPanel() {
               className={cn(
                 "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                 transition === t.id
-                  ? "border-foreground bg-foreground text-background"
+                  ? "border-transparent accent-gradient text-white"
                   : "border-foreground/15 hover:bg-foreground/5",
               )}
             >

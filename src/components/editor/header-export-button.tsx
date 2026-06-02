@@ -15,7 +15,7 @@ export function HeaderExportButton() {
       type="button"
       onClick={runExport}
       disabled={!edl || running}
-      className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background disabled:opacity-40"
+      className="inline-flex items-center gap-2 rounded-full accent-gradient px-4 py-1.5 text-sm font-medium text-white glow-accent disabled:opacity-40 disabled:shadow-none"
     >
       {running ? (
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

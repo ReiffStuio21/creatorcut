@@ -1,26 +1,60 @@
 @import "tailwindcss";
 
+/* Dark studio theme — charcoal canvas, electric-violet + cyan accents. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0f;
+  --foreground: #ececf2;
+  --accent: #7c5cff;
+  --accent-2: #22d3ee;
+  --panel: #121219;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-panel: var(--panel);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  background:
+    radial-gradient(1100px 560px at 18% -12%, rgba(124, 92, 255, 0.16), transparent 60%),
+    radial-gradient(900px 480px at 102% -6%, rgba(34, 211, 238, 0.1), transparent 55%),
+    var(--background);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+@layer utilities {
+  /* gradient text for headlines */
+  .text-gradient {
+    background: linear-gradient(92deg, #ffffff 0%, #cdbcff 55%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* glassy surface for cards/panels */
+  .glass {
+    background: color-mix(in oklab, var(--panel) 70%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  /* accent glow ring for primary CTAs / focus moments */
+  .glow-accent {
+    box-shadow:
+      0 0 0 1px rgba(124, 92, 255, 0.35),
+      0 12px 40px -12px rgba(124, 92, 255, 0.6);
+  }
+  .accent-gradient {
+    background-image: linear-gradient(92deg, var(--accent), #9a7cff 55%, var(--accent-2));
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* tidy dark scrollbars */
+* {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }

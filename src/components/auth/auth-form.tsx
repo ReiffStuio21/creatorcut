@@ -38,7 +38,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <button
           type="submit"
           disabled={pending}
-          className="mt-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background disabled:opacity-60"
+          className="mt-2 rounded-full accent-gradient px-4 py-2.5 text-sm font-medium text-white glow-accent disabled:opacity-60"
         >
           {pending ? "…" : mode === "login" ? "Log in" : "Sign up"}
         </button>
