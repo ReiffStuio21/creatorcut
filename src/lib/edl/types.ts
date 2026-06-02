@@ -68,6 +68,8 @@ export interface EDLTracks {
   music: MusicTrack[];
   images: ImageOverlay[];
   broll: BrollOverlay[];
+  /** Optional generated voiceover, mixed with speech + music. */
+  voiceover?: MusicTrack;
 }
 
 /** Color "look" applied to the whole video (Phase 7). */

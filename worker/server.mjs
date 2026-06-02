@@ -88,6 +88,8 @@ const server = http.createServer((req, res) => {
       for (const m of edl.tracks?.music ?? []) if (mediaPaths[m.src]) m.src = mediaPaths[m.src];
       for (const im of edl.tracks?.images ?? []) if (mediaPaths[im.src]) im.src = mediaPaths[im.src];
       for (const b of edl.tracks?.broll ?? []) if (mediaPaths[b.src]) b.src = mediaPaths[b.src];
+      if (edl.tracks?.voiceover && mediaPaths[edl.tracks.voiceover.src])
+        edl.tracks.voiceover.src = mediaPaths[edl.tracks.voiceover.src];
 
       fs.writeFileSync(srtPath, buildSrt(edl));
       const withAudio = await hasAudio(inPath);

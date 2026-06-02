@@ -110,6 +110,17 @@ describe("ffmpegArgsForExport", () => {
     expect(fc).toContain("[vf]null[outv]");
   });
 
+  it("mixes a voiceover with speech and music", () => {
+    const args = ffmpegArgsForExport(edl(), {
+      music: { path: "song.mp3", volume: 0.3 },
+      voiceover: { path: "vo.mp3", volume: 1 },
+      outputSeconds: 8,
+    });
+    expect(args).toContain("vo.mp3");
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("amix=inputs=3");
+  });
+
   it("overlays b-roll over a time window", () => {
     const args = ffmpegArgsForExport(edl(), {
       broll: [{ path: "broll.mp4", start: 1, duration: 2 }],

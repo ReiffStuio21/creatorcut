@@ -71,6 +71,8 @@ export interface ExportOptions {
   images?: ImageInput[];
   /** B-roll cutaways shown full-frame over a window of output time. */
   broll?: BrollInput[];
+  /** A generated voiceover track, mixed with the speech + music. */
+  voiceover?: { path: string; volume: number };
   /** Output length in seconds — used to bound the music track. */
   outputSeconds?: number;
   /** FFmpeg color-filter chain applied to the base video (Phase 7). */
@@ -99,6 +101,7 @@ export function ffmpegArgsForExport(
     music,
     images = [],
     broll = [],
+    voiceover,
     outputSeconds,
     videoFilter,
     transition = "cut",
@@ -120,6 +123,7 @@ export function ffmpegArgsForExport(
   const musicIndex = music ? nextIndex++ : -1;
   const imageIndices = images.map(() => nextIndex++);
   const brollIndices = broll.map(() => nextIndex++);
+  const voiceoverIndex = voiceover ? nextIndex++ : -1;
 
   const parts: string[] = [];
   const concatInputs: string[] = [];
@@ -201,20 +205,30 @@ export function ffmpegArgsForExport(
     chain.push(`${speech}volume=${videoVolume.toFixed(3)}[outav]`);
     speech = "[outav]";
   }
+  // Collect every audio source (speech first so it sets the output length),
+  // then mix them all. Handles speech + music + voiceover in any combination.
+  const audioParts: string[] = [];
+  if (speech) audioParts.push(speech);
   if (music) {
     chain.push(
-      `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},` +
-        `asetpts=PTS-STARTPTS[mus]`,
+      `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},asetpts=PTS-STARTPTS[mus]`,
     );
+    audioParts.push("[mus]");
+  }
+  if (voiceover) {
+    chain.push(
+      `[${voiceoverIndex}:a]volume=${voiceover.volume},atrim=0:${outSeconds},asetpts=PTS-STARTPTS[vo]`,
+    );
+    audioParts.push("[vo]");
   }
   let aout: string | null = null;
-  if (speech && music) {
-    chain.push(`${speech}[mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[amix]`);
+  if (audioParts.length > 1) {
+    chain.push(
+      `${audioParts.join("")}amix=inputs=${audioParts.length}:duration=first:dropout_transition=0:normalize=0[amix]`,
+    );
     aout = "[amix]";
-  } else if (speech) {
-    aout = speech;
-  } else if (music) {
-    aout = "[mus]";
+  } else if (audioParts.length === 1) {
+    aout = audioParts[0];
   }
   if (transition === "fade" && aout) {
     chain.push(
@@ -231,6 +245,7 @@ export function ffmpegArgsForExport(
   if (music) args.push("-i", music.path);
   images.forEach((im) => args.push("-i", im.path));
   broll.forEach((b) => args.push("-i", b.path));
+  if (voiceover) args.push("-i", voiceover.path);
 
   args.push("-filter_complex", filterComplex, "-map", "[outv]");
   if (aout) args.push("-map", aout);

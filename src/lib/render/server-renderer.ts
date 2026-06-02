@@ -34,6 +34,7 @@ export class ServerRenderer implements Renderer {
         music: edl.tracks.music.map((m) => ({ ...m })),
         images: edl.tracks.images.map((im) => ({ ...im })),
         broll: edl.tracks.broll.map((b) => ({ ...b })),
+        voiceover: edl.tracks.voiceover ? { ...edl.tracks.voiceover } : undefined,
       },
     };
     for (const [i, m] of e.tracks.music.entries()) {
@@ -50,6 +51,11 @@ export class ServerRenderer implements Renderer {
       const key = `m_broll_${i}`;
       form.append(key, await blobFromUrl(b.src), key);
       b.src = key;
+    }
+    if (e.tracks.voiceover) {
+      const key = "m_voiceover";
+      form.append(key, await blobFromUrl(e.tracks.voiceover.src), key);
+      e.tracks.voiceover.src = key;
     }
     form.append("edl", JSON.stringify(e));
 

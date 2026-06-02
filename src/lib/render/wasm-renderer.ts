@@ -96,6 +96,12 @@ export class WasmRenderer implements Renderer {
         }),
       );
 
+      let voiceover: { path: string; volume: number } | undefined;
+      if (edl.tracks.voiceover) {
+        await ffmpeg.writeFile("vo_in", await fetchFile(edl.tracks.voiceover.src));
+        voiceover = { path: "vo_in", volume: edl.tracks.voiceover.volume };
+      }
+
       const videoFilter = getFilter(edl.filter).ffmpeg || undefined;
       const args = ffmpegArgsForExport(edl, {
         withAudio,
@@ -103,6 +109,7 @@ export class WasmRenderer implements Renderer {
         music,
         images,
         broll,
+        voiceover,
         videoFilter,
         transition: edl.transition,
         videoVolume: edl.volume ?? 1,
@@ -126,6 +133,7 @@ export class WasmRenderer implements Renderer {
       await ffmpeg.deleteFile(OUTPUT_NAME).catch(() => {});
       await ffmpeg.deleteFile(SRT_PATH).catch(() => {});
       await ffmpeg.deleteFile(MUSIC_PATH).catch(() => {});
+      await ffmpeg.deleteFile("vo_in").catch(() => {});
       await Promise.all(imagePaths.map((p) => ffmpeg.deleteFile(p).catch(() => {})));
       await Promise.all(brollPaths.map((p) => ffmpeg.deleteFile(p).catch(() => {})));
     }

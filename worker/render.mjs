@@ -102,12 +102,14 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
   const music = edl.tracks?.music?.[0]; // { src: path, volume }
   const images = edl.tracks?.images ?? []; // [{ src: path, x, y }]
   const broll = edl.tracks?.broll ?? []; // [{ src: path, start, duration }]
+  const voiceover = edl.tracks?.voiceover; // { src: path, volume }
 
-  // input indices: video(0), music, images, b-roll
+  // input indices: video(0), music, images, b-roll, voiceover
   let nextIndex = 1;
   const musicIndex = music ? nextIndex++ : -1;
   const imageIndices = images.map(() => nextIndex++);
   const brollIndices = broll.map(() => nextIndex++);
+  const voiceoverIndex = voiceover ? nextIndex++ : -1;
 
   const parts = [];
   const concatInputs = [];
@@ -174,19 +176,28 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
     chain.push(`${speech}volume=${videoVolume.toFixed(3)}[outav]`);
     speech = "[outav]";
   }
+  const audioParts = [];
+  if (speech) audioParts.push(speech);
   if (music) {
     chain.push(
       `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},asetpts=PTS-STARTPTS[mus]`,
     );
+    audioParts.push("[mus]");
+  }
+  if (voiceover) {
+    chain.push(
+      `[${voiceoverIndex}:a]volume=${voiceover.volume},atrim=0:${outSeconds},asetpts=PTS-STARTPTS[vo]`,
+    );
+    audioParts.push("[vo]");
   }
   let aout = null;
-  if (speech && music) {
-    chain.push(`${speech}[mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[amix]`);
+  if (audioParts.length > 1) {
+    chain.push(
+      `${audioParts.join("")}amix=inputs=${audioParts.length}:duration=first:dropout_transition=0:normalize=0[amix]`,
+    );
     aout = "[amix]";
-  } else if (speech) {
-    aout = speech;
-  } else if (music) {
-    aout = "[mus]";
+  } else if (audioParts.length === 1) {
+    aout = audioParts[0];
   }
   if (edl.transition === "fade" && aout) {
     chain.push(`${aout}afade=t=in:st=0:d=${FADE},afade=t=out:st=${fadeStart}:d=${FADE}[aoutf]`);
@@ -198,6 +209,7 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
   if (music) args.push("-i", music.src);
   images.forEach((im) => args.push("-i", im.src));
   broll.forEach((b) => args.push("-i", b.src));
+  if (voiceover) args.push("-i", voiceover.src);
 
   args.push("-filter_complex", chain.join(";"), "-map", "[outv]");
   if (aout) args.push("-map", aout);

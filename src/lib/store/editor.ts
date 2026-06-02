@@ -87,6 +87,12 @@ interface EditorState {
   images: ImageAsset[];
   broll: BrollAsset[];
 
+  // TTS voiceover (needs OPENAI_API_KEY server-side)
+  voiceover: { id: string; url: string; fileName: string } | null;
+  tts: StepState;
+  ttsText: string;
+  ttsVoice: string;
+
   // Color look + transition (Phase 7 / 8)
   filter: VideoFilterId;
   transition: TransitionId;
@@ -136,6 +142,10 @@ interface EditorState {
   addBroll: (file: File, duration: number) => void;
   setBrollStart: (id: string, start: number) => void;
   removeBroll: (id: string) => void;
+  setTtsText: (text: string) => void;
+  setTtsVoice: (voice: string) => void;
+  generateVoiceover: () => Promise<void>;
+  removeVoiceover: () => void;
   setFilter: (filter: VideoFilterId) => void;
   setTransition: (transition: TransitionId) => void;
   setEnhance: (on: boolean) => void;
@@ -172,6 +182,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   music: null,
   images: [],
   broll: [],
+  voiceover: null,
+  tts: idleStep,
+  ttsText: "",
+  ttsVoice: "alloy",
   filter: "none",
   transition: "cut",
   enhance: false,
@@ -200,6 +214,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (prevOrig && prevOrig !== prev) URL.revokeObjectURL(prevOrig.url);
     const prevBgImg = get().bgImageUrl;
     if (prevBgImg) URL.revokeObjectURL(prevBgImg);
+    const prevVo = get().voiceover;
+    if (prevVo) URL.revokeObjectURL(prevVo.url);
     set({
       video: {
         id: crypto.randomUUID(),
@@ -215,6 +231,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       transcript: null,
       transcribe: idleStep,
       edl: null,
+      voiceover: null,
+      tts: idleStep,
+      ttsText: "",
       videoVolume: 1,
       selectedSegmentId: null,
       enhance: false,
@@ -388,6 +407,46 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return { broll: s.broll.filter((b) => b.id !== id) };
     }),
 
+  setTtsText: (ttsText) => set({ ttsText }),
+
+  setTtsVoice: (ttsVoice) => set({ ttsVoice }),
+
+  generateVoiceover: async () => {
+    const text = get().ttsText.trim();
+    if (!text || get().tts.status === "running") return;
+    set({ tts: runningStep() });
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: get().ttsVoice }),
+      });
+      if (!res.ok) {
+        const detail = (await res.text().catch(() => "")).slice(0, 160);
+        throw new Error(detail || `Voiceover failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const prev = get().voiceover;
+      if (prev) URL.revokeObjectURL(prev.url);
+      set({
+        voiceover: {
+          id: crypto.randomUUID(),
+          url: URL.createObjectURL(blob),
+          fileName: "voiceover.mp3",
+        },
+        tts: doneStep(),
+      });
+    } catch (e) {
+      set({ tts: errorStep(e instanceof Error ? e.message : "Voiceover failed") });
+    }
+  },
+
+  removeVoiceover: () => {
+    const prev = get().voiceover;
+    if (prev) URL.revokeObjectURL(prev.url);
+    set({ voiceover: null, tts: idleStep });
+  },
+
   setFilter: (filter) => set({ filter }),
 
   setTransition: (transition) => set({ transition }),
@@ -519,7 +578,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   runExport: async () => {
-    const { video, edl, music, images, broll, filter, transition, videoVolume, enhance, denoise } =
+    const { video, edl, music, images, broll, voiceover, filter, transition, videoVolume, enhance, denoise } =
       get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
@@ -559,6 +618,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             start: b.start,
             duration: b.duration,
           })),
+          voiceover: voiceover ? { src: voiceover.url, start: 0, volume: 1 } : undefined,
         },
       };
 
@@ -628,6 +688,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
     if (s.originalVideo && s.originalVideo !== s.video) URL.revokeObjectURL(s.originalVideo.url);
     if (s.bgImageUrl) URL.revokeObjectURL(s.bgImageUrl);
+    if (s.voiceover) URL.revokeObjectURL(s.voiceover.url);
     if (s.music) URL.revokeObjectURL(s.music.url);
     s.images.forEach((im) => URL.revokeObjectURL(im.url));
     s.broll.forEach((b) => URL.revokeObjectURL(b.url));
@@ -641,6 +702,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       music: null,
       images: [],
       broll: [],
+      voiceover: null,
+      tts: idleStep,
+      ttsText: "",
       filter: "none",
       transition: "cut",
       enhance: false,
