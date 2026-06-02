@@ -13,6 +13,7 @@ import {
   outputDuration,
   setAllKept,
   setSegmentKept,
+  splitSegment,
 } from "@/lib/edl/operations";
 import {
   doneStep,
@@ -76,6 +77,10 @@ interface EditorState {
   // The edit decision list — single source of truth for the cut (PLAN.md §4a)
   edl: EDL | null;
   aspectRatio: AspectRatio;
+  /** master audio volume for the video's own sound, 0..1.5 */
+  videoVolume: number;
+  /** currently selected timeline clip */
+  selectedSegmentId: string | null;
 
   // User media (Phase 5/8) — folded into edl.tracks at export time
   music: MusicAsset | null;
@@ -96,8 +101,9 @@ interface EditorState {
   // Persistence (Supabase) — set when a saved project is loaded/saved
   projectId: string | null;
 
-  // preview wiring: the live <video> element, registered by PreviewPlayer
+  // preview wiring: the live <video> element + playhead time (output preview)
   videoEl: HTMLVideoElement | null;
+  currentTime: number;
 
   loadFile: (file: File) => void;
   setMetadata: (meta: { duration: number; width: number; height: number }) => void;
@@ -105,6 +111,9 @@ interface EditorState {
   toggleSegment: (id: string) => void;
   cleanup: () => void;
   restoreAll: () => void;
+  splitAtPlayhead: () => void;
+  selectSegment: (id: string | null) => void;
+  setVideoVolume: (volume: number) => void;
   setCaptions: (patch: Partial<CaptionConfig>) => void;
   setAspectRatio: (aspectRatio: AspectRatio) => void;
   addMusic: (file: File) => void;
@@ -130,6 +139,7 @@ interface EditorState {
   }) => void;
   runExport: () => Promise<void>;
   setVideoEl: (el: HTMLVideoElement | null) => void;
+  setCurrentTime: (t: number) => void;
   seekTo: (seconds: number) => void;
   reset: () => void;
 }
@@ -140,6 +150,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   transcribe: idleStep,
   edl: null,
   aspectRatio: "9:16",
+  videoVolume: 1,
+  selectedSegmentId: null,
   music: null,
   images: [],
   broll: [],
@@ -152,6 +164,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   exportProgress: 0,
   exportUrl: null,
   videoEl: null,
+  currentTime: 0,
 
   loadFile: (file) => {
     const prev = get().video;
@@ -173,6 +186,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       transcript: null,
       transcribe: idleStep,
       edl: null,
+      videoVolume: 1,
+      selectedSegmentId: null,
       projectId: null,
       exportStep: idleStep,
       exportStage: null,
@@ -236,6 +251,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   cleanup: () => set((s) => (s.edl ? { edl: applyCleanup(s.edl) } : s)),
 
   restoreAll: () => set((s) => (s.edl ? { edl: setAllKept(s.edl, true) } : s)),
+
+  splitAtPlayhead: () =>
+    set((s) => {
+      if (!s.edl || !s.videoEl) return s;
+      const t = s.videoEl.currentTime;
+      const seg = s.edl.segments.find((x) => t > x.start && t < x.end);
+      if (!seg) return s;
+      return { edl: splitSegment(s.edl, seg.id, t), selectedSegmentId: `${seg.id}-1` };
+    }),
+
+  selectSegment: (id) => set({ selectedSegmentId: id }),
+
+  setVideoVolume: (volume) => set({ videoVolume: volume }),
 
   setCaptions: (patch) =>
     set((s) =>
@@ -354,6 +382,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       aspectRatio: edl.aspectRatio,
       filter: edl.filter ?? "none",
       transition: edl.transition ?? "cut",
+      videoVolume: edl.volume ?? 1,
+      selectedSegmentId: null,
       transcript: null,
       transcribe: doneStep(),
       music: music
@@ -381,7 +411,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   runExport: async () => {
-    const { video, edl, music, images, broll, filter, transition } = get();
+    const { video, edl, music, images, broll, filter, transition, videoVolume } = get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
     const prevUrl = get().exportUrl;
@@ -401,6 +431,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...edl,
         filter,
         transition,
+        volume: videoVolume,
         tracks: {
           music: music
             ? [{ src: music.url, start: 0, volume: music.volume }]
@@ -470,6 +501,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setVideoEl: (el) => set({ videoEl: el }),
 
+  setCurrentTime: (t) => set({ currentTime: t }),
+
   seekTo: (seconds) => {
     const el = get().videoEl;
     if (el) {
@@ -490,6 +523,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       transcript: null,
       transcribe: idleStep,
       edl: null,
+      videoVolume: 1,
+      selectedSegmentId: null,
       music: null,
       images: [],
       broll: [],

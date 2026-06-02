@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MediaPanel } from "@/components/editor/media-panel";
 import { PreviewPlayer } from "@/components/editor/preview-player";
 import { TranscriptPanel } from "@/components/editor/transcript-panel";
+import { Timeline } from "@/components/editor/timeline";
 import { CaptionsPanel } from "@/components/editor/captions-panel";
 import { ExportPanel } from "@/components/editor/export-panel";
 import { LookPanel } from "@/components/editor/look-panel";
@@ -55,6 +56,7 @@ export default async function EditorPage({
         {/* Center — preview + transcript */}
         <section className="flex flex-col gap-4 p-4">
           <PreviewPlayer />
+          <Timeline />
           <div className="min-h-48 flex-1 rounded-xl border border-foreground/10 p-4">
             <TranscriptPanel />
           </div>

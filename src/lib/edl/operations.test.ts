@@ -14,6 +14,7 @@ import {
   setSegmentKept,
   skipToKept,
   sourceToOutputTime,
+  splitSegment,
   toKeptSegments,
 } from "./operations";
 import { edlFromTranscript } from "./from-transcript";
@@ -74,6 +75,20 @@ describe("EDL operations", () => {
     expect(skipToKept(edl, 2)).toBe(2); // inside kept s1
     expect(skipToKept(edl, 4.5)).toBe(5); // inside removed filler → jump to s3 start
     expect(skipToKept(edl, 10)).toBeNull(); // past the last kept segment
+  });
+
+  it("splitSegment splits a clip at a source time", () => {
+    const edl = sampleEDL(); // s1 [0-4]
+    const out = splitSegment(edl, "s1", 2.5);
+    const ids = out.segments.map((s) => s.id);
+    expect(ids).toEqual(["s1-1", "s1-2", "s2", "s3", "s4"]);
+    const a = out.segments.find((s) => s.id === "s1-1")!;
+    const b = out.segments.find((s) => s.id === "s1-2")!;
+    expect([a.start, a.end]).toEqual([0, 2.5]);
+    expect([b.start, b.end]).toEqual([2.5, 4]);
+    expect(a.text).toBe("Hey everyone"); // first half keeps text
+    // no-op at the boundary
+    expect(splitSegment(edl, "s1", 0).segments).toHaveLength(4);
   });
 
   it("sourceToOutputTime collapses removed time", () => {

@@ -159,17 +159,25 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
       : "null";
   chain.push(`${v}${vEnd}[outv]`);
 
-  // audio: speech + music mix + fade
-  let aout = withAudio ? "[outa]" : null;
+  // audio: master volume on speech + music mix + fade
+  const videoVolume = typeof edl.volume === "number" ? edl.volume : 1;
+  let speech = withAudio ? "[outa]" : null;
+  if (speech && videoVolume !== 1) {
+    chain.push(`${speech}volume=${videoVolume.toFixed(3)}[outav]`);
+    speech = "[outav]";
+  }
   if (music) {
     chain.push(
       `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},asetpts=PTS-STARTPTS[mus]`,
     );
   }
-  if (withAudio && music) {
-    chain.push(`[outa][mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[amix]`);
+  let aout = null;
+  if (speech && music) {
+    chain.push(`${speech}[mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[amix]`);
     aout = "[amix]";
-  } else if (!withAudio && music) {
+  } else if (speech) {
+    aout = speech;
+  } else if (music) {
     aout = "[mus]";
   }
   if (edl.transition === "fade" && aout) {

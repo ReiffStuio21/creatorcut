@@ -87,6 +87,8 @@ export interface EDL {
   filter: VideoFilterId;
   /** Intro/outro transition; defaults to "cut". */
   transition: TransitionId;
+  /** Master audio volume for the video's own sound, 0..1.5 (defaults to 1). */
+  volume?: number;
 }
 
 /** A video source the renderer can read (file in browser memory, or a URL). */

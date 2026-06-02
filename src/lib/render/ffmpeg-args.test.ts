@@ -60,7 +60,13 @@ describe("ffmpegArgsForExport", () => {
     const fc = args[args.indexOf("-filter_complex") + 1];
     expect(fc).toContain("[1:a]volume=0.3,atrim=0:8");
     expect(fc).toContain("amix=inputs=2");
-    expect(args).toContain("[aout]"); // mapped as the output audio
+    expect(args).toContain("[amix]"); // mapped as the output audio
+  });
+
+  it("applies master video volume to the speech", () => {
+    const args = ffmpegArgsForExport(edl(), { videoVolume: 0.5 });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[outa]volume=0.500[outav]");
   });
 
   it("overlays an image at the given position", () => {

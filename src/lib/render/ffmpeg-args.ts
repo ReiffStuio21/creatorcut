@@ -77,6 +77,8 @@ export interface ExportOptions {
   videoFilter?: string;
   /** "fade" adds an intro/outro fade from/to black (video + audio). */
   transition?: "cut" | "fade";
+  /** Master volume for the video's own audio (1 = unchanged). */
+  videoVolume?: number;
 }
 
 const FADE_SECONDS = 0.4;
@@ -96,6 +98,7 @@ export function ffmpegArgsForExport(
     outputSeconds,
     videoFilter,
     transition = "cut",
+    videoVolume = 1,
   }: ExportOptions = {},
 ): string[] {
   const kept = toKeptSegments(edl);
@@ -178,19 +181,24 @@ export function ffmpegArgsForExport(
       : "null";
   chain.push(`${v}${vEnd}[outv]`);
 
-  // Audio post-chain: mix music under the speech (or use whichever exists).
-  let aout: string | null = null;
+  // Audio post-chain: master volume on the speech, then mix music under it.
+  let speech = withAudio ? "[outa]" : null;
+  if (speech && videoVolume !== 1) {
+    chain.push(`${speech}volume=${videoVolume.toFixed(3)}[outav]`);
+    speech = "[outav]";
+  }
   if (music) {
     chain.push(
       `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},` +
         `asetpts=PTS-STARTPTS[mus]`,
     );
   }
-  if (withAudio && music) {
-    chain.push(`[outa][mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`);
-    aout = "[aout]";
-  } else if (withAudio) {
-    aout = "[outa]";
+  let aout: string | null = null;
+  if (speech && music) {
+    chain.push(`${speech}[mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[amix]`);
+    aout = "[amix]";
+  } else if (speech) {
+    aout = speech;
   } else if (music) {
     aout = "[mus]";
   }

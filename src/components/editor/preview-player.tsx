@@ -27,11 +27,13 @@ export function PreviewPlayer() {
   const broll = useEditorStore((s) => s.broll);
   const filter = useEditorStore((s) => s.filter);
   const transition = useEditorStore((s) => s.transition);
+  const videoVolume = useEditorStore((s) => s.videoVolume);
+  const currentTime = useEditorStore((s) => s.currentTime);
+  const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setMetadata = useEditorStore((s) => s.setMetadata);
   const setVideoEl = useEditorStore((s) => s.setVideoEl);
   const localRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
 
   const outputTime = edl ? sourceToOutputTime(edl, currentTime) : currentTime;
@@ -64,6 +66,11 @@ export function PreviewPlayer() {
   useEffect(() => {
     if (audioRef.current && music) audioRef.current.volume = music.volume;
   }, [music]);
+
+  // Master volume on the source video (preview caps at 1.0; export can boost).
+  useEffect(() => {
+    if (localRef.current) localRef.current.volume = Math.min(1, Math.max(0, videoVolume));
+  }, [videoVolume, video?.id]);
 
   useEffect(() => {
     const el = localRef.current;
@@ -101,7 +108,7 @@ export function PreviewPlayer() {
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
     };
-  }, [edl, music, video?.id]);
+  }, [edl, music, video?.id, setCurrentTime]);
 
   if (!video) {
     return (

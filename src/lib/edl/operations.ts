@@ -55,6 +55,24 @@ export function setAllKept(edl: EDL, kept: boolean): EDL {
 }
 
 /**
+ * Split a segment at a SOURCE time, creating a manual cut point so a clip can be
+ * trimmed/removed at any moment (not just word boundaries). No-op if the time is
+ * at/outside the segment's bounds. The first half keeps the text.
+ */
+export function splitSegment(edl: EDL, id: string, atSourceTime: number): EDL {
+  const i = edl.segments.findIndex((s) => s.id === id);
+  if (i < 0) return edl;
+  const s = edl.segments[i];
+  if (atSourceTime <= s.start || atSourceTime >= s.end) return edl;
+  const a: Segment = { ...s, id: `${id}-1`, end: atSourceTime };
+  const b: Segment = { ...s, id: `${id}-2`, start: atSourceTime, text: "" };
+  return {
+    ...edl,
+    segments: [...edl.segments.slice(0, i), a, b, ...edl.segments.slice(i + 1)],
+  };
+}
+
+/**
  * Given a SOURCE time, return the nearest source time that is part of the final
  * cut: the same time if it falls inside a kept segment, otherwise the start of
  * the next kept segment. Returns null if nothing kept remains after it. The
