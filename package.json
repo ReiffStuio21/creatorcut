@@ -13,6 +13,8 @@
     "test:e2e:captions": "node e2e/verify-captions.mjs",
     "test:e2e:media": "node e2e/verify-media.mjs",
     "test:e2e:filter": "node e2e/verify-filter.mjs",
+    "test:e2e:supabase": "node e2e/verify-supabase.mjs",
+    "test:e2e:persist": "node e2e/verify-media-persist.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
