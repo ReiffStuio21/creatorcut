@@ -6,6 +6,7 @@ import { Timeline } from "@/components/editor/timeline";
 import { CaptionsPanel } from "@/components/editor/captions-panel";
 import { ExportPanel } from "@/components/editor/export-panel";
 import { LookPanel } from "@/components/editor/look-panel";
+import { BackgroundPanel } from "@/components/editor/background-panel";
 import { HeaderExportButton } from "@/components/editor/header-export-button";
 import { SaveButton } from "@/components/editor/save-button";
 import { ProjectLoader } from "@/components/editor/project-loader";
@@ -64,6 +65,10 @@ export default async function EditorPage({
 
         {/* Right — look, captions, export */}
         <aside className="flex flex-col gap-4 p-4">
+          <div>
+            <PanelLabel>Background</PanelLabel>
+            <BackgroundPanel />
+          </div>
           <div>
             <PanelLabel>Look</PanelLabel>
             <LookPanel />

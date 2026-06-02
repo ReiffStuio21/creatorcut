@@ -91,6 +91,14 @@ interface EditorState {
   filter: VideoFilterId;
   transition: TransitionId;
 
+  // Background removal (on-device). originalVideo snapshots the pre-bake source
+  // so mode switches re-bake from the original and "Off" restores it.
+  backgroundMode: "none" | "color" | "blur";
+  bgColor: string;
+  originalVideo: LoadedVideo | null;
+  removeBg: StepState;
+  removeBgProgress: number;
+
   // Export — WasmRenderer (browser) or ServerRenderer (worker) → downloadable MP4
   serverRender: boolean;
   exportStep: StepState;
@@ -127,6 +135,9 @@ interface EditorState {
   removeBroll: (id: string) => void;
   setFilter: (filter: VideoFilterId) => void;
   setTransition: (transition: TransitionId) => void;
+  setBgColor: (color: string) => void;
+  runRemoveBackground: (mode: "color" | "blur") => Promise<void>;
+  restoreBackground: () => void;
   setServerRender: (on: boolean) => void;
   setProjectId: (id: string) => void;
   hydrateProject: (p: {
@@ -157,6 +168,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   broll: [],
   filter: "none",
   transition: "cut",
+  backgroundMode: "none",
+  bgColor: "#22c55e",
+  originalVideo: null,
+  removeBg: idleStep,
+  removeBgProgress: 0,
   serverRender: false,
   projectId: null,
   exportStep: idleStep,
@@ -171,6 +187,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (prev) URL.revokeObjectURL(prev.url);
     const prevExport = get().exportUrl;
     if (prevExport) URL.revokeObjectURL(prevExport);
+    const prevOrig = get().originalVideo;
+    if (prevOrig && prevOrig !== prev) URL.revokeObjectURL(prevOrig.url);
     set({
       video: {
         id: crypto.randomUUID(),
@@ -188,6 +206,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       edl: null,
       videoVolume: 1,
       selectedSegmentId: null,
+      backgroundMode: "none",
+      originalVideo: null,
+      removeBg: idleStep,
+      removeBgProgress: 0,
       projectId: null,
       exportStep: idleStep,
       exportStage: null,
@@ -356,6 +378,63 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setTransition: (transition) => set({ transition }),
 
+  setBgColor: (bgColor) => set({ bgColor }),
+
+  runRemoveBackground: async (mode) => {
+    const s = get();
+    if (!s.video || s.removeBg.status === "running") return;
+    // snapshot the original on first use so re-bakes start from it
+    const original = s.originalVideo ?? s.video;
+    set({
+      backgroundMode: mode,
+      originalVideo: original,
+      removeBg: runningStep(),
+      removeBgProgress: 0,
+    });
+    try {
+      const { removeBackground } = await import("@/lib/background/remove");
+      const bg =
+        mode === "blur"
+          ? ({ type: "blur" } as const)
+          : ({ type: "color", color: get().bgColor } as const);
+      const blob = await removeBackground(original.url, bg, (p) =>
+        set({ removeBgProgress: p }),
+      );
+      const prev = get().video;
+      if (prev && prev !== get().originalVideo) URL.revokeObjectURL(prev.url);
+      set({
+        video: {
+          ...original,
+          id: crypto.randomUUID(),
+          url: URL.createObjectURL(blob),
+          file: new File([blob], original.fileName, { type: blob.type }),
+          fileSize: blob.size,
+        },
+        removeBg: doneStep(),
+        removeBgProgress: 1,
+      });
+    } catch (e) {
+      set({
+        removeBg: errorStep(
+          e instanceof Error ? e.message : "Background removal failed",
+        ),
+      });
+    }
+  },
+
+  restoreBackground: () =>
+    set((s) => {
+      if (!s.originalVideo) return { backgroundMode: "none" };
+      if (s.video && s.video !== s.originalVideo) URL.revokeObjectURL(s.video.url);
+      return {
+        video: s.originalVideo,
+        originalVideo: null,
+        backgroundMode: "none",
+        removeBg: idleStep,
+        removeBgProgress: 0,
+      };
+    }),
+
   setServerRender: (on) => set({ serverRender: on }),
 
   setProjectId: (id) => set({ projectId: id }),
@@ -515,6 +594,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const s = get();
     if (s.video) URL.revokeObjectURL(s.video.url);
     if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
+    if (s.originalVideo && s.originalVideo !== s.video) URL.revokeObjectURL(s.originalVideo.url);
     if (s.music) URL.revokeObjectURL(s.music.url);
     s.images.forEach((im) => URL.revokeObjectURL(im.url));
     s.broll.forEach((b) => URL.revokeObjectURL(b.url));
@@ -530,6 +610,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       broll: [],
       filter: "none",
       transition: "cut",
+      backgroundMode: "none",
+      bgColor: "#22c55e",
+      originalVideo: null,
+      removeBg: idleStep,
+      removeBgProgress: 0,
       projectId: null,
       exportStep: idleStep,
       exportStage: null,

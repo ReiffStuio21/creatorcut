@@ -19,13 +19,15 @@
     "test:e2e:transition": "node e2e/verify-transition.mjs",
     "test:e2e:broll": "node e2e/verify-broll.mjs",
     "test:e2e:server": "node e2e/verify-server-render.mjs",
-    "test:e2e:server-parity": "node e2e/verify-server-parity.mjs"
+    "test:e2e:server-parity": "node e2e/verify-server-parity.mjs",
+    "test:e2e:background": "node e2e/verify-background.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@hookform/resolvers": "^5.4.0",
+    "@mediapipe/tasks-vision": "^0.10.35",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "class-variance-authority": "^0.7.1",
