@@ -102,7 +102,7 @@ See [`.env.local.example`](.env.local.example). When you wire real services:
 
 ## Status & roadmap
 
-**Done (verified live):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · **b-roll cutaways** · color looks · **fade transitions** · MP4 export · **server-side rendering** with full parity (ffmpeg worker on Fly, for long clips) · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive UI + onboarding.
+**Done (verified live):** transcript-cut editing · timeline (split / cut / volume) · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · **b-roll cutaways** · color looks · **fade transitions** · **on-device background removal** (color / blur / image) · **auto-enhance** · **AI noise removal** · **AI voiceover** (OpenAI TTS) · MP4 export · **server-side rendering** with full parity (ffmpeg worker on Fly, for long clips) · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive dark-studio UI.
 
 **Next:** persist b-roll with projects · stock media · a render job queue for very long clips.
 
