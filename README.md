@@ -102,9 +102,9 @@ See [`.env.local.example`](.env.local.example). When you wire real services:
 
 ## Status & roadmap
 
-**Done (verified live):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · color looks · MP4 export · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive UI + onboarding.
+**Done (verified live):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · **b-roll cutaways** · color looks · **fade transitions** · MP4 export · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive UI + onboarding.
 
-**Next:** server-side rendering for longer clips · transitions · b-roll insertion · persist music/logos with a project.
+**Next:** server-side rendering for long clips (needs a dedicated ffmpeg worker — the `Renderer` seam is ready) · persist b-roll with projects · stock media.
 
 The full build plan and decisions live in **[PLAN.md](PLAN.md)** — the single source of truth.
 
