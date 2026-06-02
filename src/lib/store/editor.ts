@@ -4,6 +4,7 @@ import type {
   AspectRatio,
   CaptionConfig,
   EDL,
+  TransitionId,
   VideoFilterId,
 } from "@/lib/edl/types";
 import { edlFromTranscript } from "@/lib/edl/from-transcript";
@@ -71,8 +72,9 @@ interface EditorState {
   music: MusicAsset | null;
   images: ImageAsset[];
 
-  // Color look (Phase 7)
+  // Color look + transition (Phase 7 / 8)
   filter: VideoFilterId;
+  transition: TransitionId;
 
   // Export (Phase 6) — WasmRenderer turns the EDL into a downloadable MP4
   exportStep: StepState;
@@ -101,6 +103,7 @@ interface EditorState {
   setImagePosition: (id: string, x: number, y: number) => void;
   removeImage: (id: string) => void;
   setFilter: (filter: VideoFilterId) => void;
+  setTransition: (transition: TransitionId) => void;
   setProjectId: (id: string) => void;
   hydrateProject: (p: {
     id: string;
@@ -125,6 +128,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   music: null,
   images: [],
   filter: "none",
+  transition: "cut",
   projectId: null,
   exportStep: idleStep,
   exportStage: null,
@@ -279,6 +283,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setFilter: (filter) => set({ filter }),
 
+  setTransition: (transition) => set({ transition }),
+
   setProjectId: (id) => set({ projectId: id }),
 
   hydrateProject: ({ id, file, meta, edl, music, images }) => {
@@ -301,6 +307,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       edl,
       aspectRatio: edl.aspectRatio,
       filter: edl.filter ?? "none",
+      transition: edl.transition ?? "cut",
       transcript: null,
       transcribe: doneStep(),
       music: music
@@ -327,7 +334,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   runExport: async () => {
-    const { video, edl, music, images, filter } = get();
+    const { video, edl, music, images, filter, transition } = get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
     const prevUrl = get().exportUrl;
@@ -346,6 +353,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const edlForExport: EDL = {
         ...edl,
         filter,
+        transition,
         tracks: {
           music: music
             ? [{ src: music.url, start: 0, volume: music.volume }]
@@ -418,6 +426,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       music: null,
       images: [],
       filter: "none",
+      transition: "cut",
       projectId: null,
       exportStep: idleStep,
       exportStage: null,

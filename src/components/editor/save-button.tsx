@@ -11,6 +11,7 @@ export function SaveButton() {
   const video = useEditorStore((s) => s.video);
   const edl = useEditorStore((s) => s.edl);
   const filter = useEditorStore((s) => s.filter);
+  const transition = useEditorStore((s) => s.transition);
   const music = useEditorStore((s) => s.music);
   const images = useEditorStore((s) => s.images);
   const projectId = useEditorStore((s) => s.projectId);
@@ -35,7 +36,7 @@ export function SaveButton() {
           width: video.width,
           height: video.height,
         },
-        edl: { ...edl, filter },
+        edl: { ...edl, filter, transition },
         music: music
           ? { url: music.url, fileName: music.fileName, volume: music.volume }
           : undefined,

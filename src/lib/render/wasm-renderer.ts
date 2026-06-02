@@ -93,6 +93,7 @@ export class WasmRenderer implements Renderer {
         music,
         images,
         videoFilter,
+        transition: edl.transition,
       });
 
       this.hooks.onStage?.("encoding");

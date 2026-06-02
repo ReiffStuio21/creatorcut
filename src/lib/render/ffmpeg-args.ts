@@ -66,7 +66,11 @@ export interface ExportOptions {
   outputSeconds?: number;
   /** FFmpeg color-filter chain applied to the base video (Phase 7). */
   videoFilter?: string;
+  /** "fade" adds an intro/outro fade from/to black (video + audio). */
+  transition?: "cut" | "fade";
 }
+
+const FADE_SECONDS = 0.4;
 
 /**
  * Build the FFmpeg argv for exporting the current cut. Throws if nothing is
@@ -81,6 +85,7 @@ export function ffmpegArgsForExport(
     images = [],
     outputSeconds,
     videoFilter,
+    transition = "cut",
   }: ExportOptions = {},
 ): string[] {
   const kept = toKeptSegments(edl);
@@ -142,7 +147,13 @@ export function ffmpegArgsForExport(
     );
     v = `[ov${k}]`;
   });
-  chain.push(`${v}null[outv]`);
+  // Terminal: hard cut (null copy) or intro/outro fade from/to black.
+  const fadeOutStart = Math.max(0, outSeconds - FADE_SECONDS).toFixed(2);
+  const vEnd =
+    transition === "fade"
+      ? `fade=t=in:st=0:d=${FADE_SECONDS},fade=t=out:st=${fadeOutStart}:d=${FADE_SECONDS}`
+      : "null";
+  chain.push(`${v}${vEnd}[outv]`);
 
   // Audio post-chain: mix music under the speech (or use whichever exists).
   let aout: string | null = null;
@@ -159,6 +170,13 @@ export function ffmpegArgsForExport(
     aout = "[outa]";
   } else if (music) {
     aout = "[mus]";
+  }
+  if (transition === "fade" && aout) {
+    chain.push(
+      `${aout}afade=t=in:st=0:d=${FADE_SECONDS},` +
+        `afade=t=out:st=${fadeOutStart}:d=${FADE_SECONDS}[aoutf]`,
+    );
+    aout = "[aoutf]";
   }
 
   const filterComplex = chain.join(";");

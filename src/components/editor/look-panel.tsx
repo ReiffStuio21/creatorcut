@@ -5,10 +5,17 @@ import { FILTERS } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
 /** Color look picker (Phase 7) — applies to the preview and the export. */
+const TRANSITIONS = [
+  { id: "cut", label: "Cut" },
+  { id: "fade", label: "Fade" },
+] as const;
+
 export function LookPanel() {
   const video = useEditorStore((s) => s.video);
   const filter = useEditorStore((s) => s.filter);
   const setFilter = useEditorStore((s) => s.setFilter);
+  const transition = useEditorStore((s) => s.transition);
+  const setTransition = useEditorStore((s) => s.setTransition);
 
   if (!video) {
     return (
@@ -19,22 +26,45 @@ export function LookPanel() {
   }
 
   return (
-    <div className="mt-2 grid grid-cols-3 gap-1.5">
-      {FILTERS.map((f) => (
-        <button
-          key={f.id}
-          type="button"
-          onClick={() => setFilter(f.id)}
-          className={cn(
-            "rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-            filter === f.id
-              ? "border-foreground bg-foreground text-background"
-              : "border-foreground/15 hover:bg-foreground/5",
-          )}
-        >
-          {f.label}
-        </button>
-      ))}
+    <div className="mt-2 flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-1.5">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setFilter(f.id)}
+            className={cn(
+              "rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+              filter === f.id
+                ? "border-foreground bg-foreground text-background"
+                : "border-foreground/15 hover:bg-foreground/5",
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-foreground/50">Transition</span>
+        <div className="flex flex-1 gap-1.5">
+          {TRANSITIONS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTransition(t.id)}
+              className={cn(
+                "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                transition === t.id
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-foreground/15 hover:bg-foreground/5",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

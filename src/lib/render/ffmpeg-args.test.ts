@@ -74,6 +74,21 @@ describe("ffmpegArgsForExport", () => {
     expect(fc).toContain("[ov0]null[outv]");
   });
 
+  it("adds intro/outro fade (video + audio) when transition is fade", () => {
+    const args = ffmpegArgsForExport(edl(), { transition: "fade", outputSeconds: 8 });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("fade=t=in:st=0:d=0.4");
+    expect(fc).toContain("fade=t=out:st=7.60:d=0.4");
+    expect(fc).toContain("afade=t=in:st=0:d=0.4");
+  });
+
+  it("uses a hard cut (no fade) by default", () => {
+    const fc = ffmpegArgsForExport(edl())[
+      ffmpegArgsForExport(edl()).indexOf("-filter_complex") + 1
+    ];
+    expect(fc).not.toContain("fade=");
+  });
+
   it("applies a color filter to the base video before captions", () => {
     const args = ffmpegArgsForExport(edl(), { videoFilter: "hue=s=0" });
     const fc = args[args.indexOf("-filter_complex") + 1];

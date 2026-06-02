@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "@/lib/store/editor";
-import { skipToKept, sourceToOutputTime } from "@/lib/edl/operations";
+import { outputDuration, skipToKept, sourceToOutputTime } from "@/lib/edl/operations";
 import { activeCue, buildCaptionCues } from "@/lib/captions/cues";
 import type { CaptionStyle } from "@/lib/edl/types";
 import { getFilter } from "@/lib/filters";
@@ -25,6 +25,7 @@ export function PreviewPlayer() {
   const music = useEditorStore((s) => s.music);
   const images = useEditorStore((s) => s.images);
   const filter = useEditorStore((s) => s.filter);
+  const transition = useEditorStore((s) => s.transition);
   const setMetadata = useEditorStore((s) => s.setMetadata);
   const setVideoEl = useEditorStore((s) => s.setVideoEl);
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -43,6 +44,17 @@ export function PreviewPlayer() {
   const captions = edl?.captions;
   const cue =
     captions?.enabled && cues.length ? activeCue(cues, currentTime) : null;
+
+  // intro/outro fade overlay opacity (matches the export's fade transition)
+  let fadeOpacity = 0;
+  if (transition === "fade" && edl) {
+    const FD = 0.4;
+    const outDur = outputDuration(edl);
+    const outT = sourceToOutputTime(edl, currentTime);
+    const inRamp = Math.max(0, (FD - outT) / FD);
+    const outRamp = Math.max(0, (outT - (outDur - FD)) / FD);
+    fadeOpacity = Math.min(1, Math.max(inRamp, outRamp));
+  }
 
   // Keep the music element's volume in sync with the track setting.
   useEffect(() => {
@@ -130,6 +142,13 @@ export function PreviewPlayer() {
             {cue.text}
           </span>
         </div>
+      )}
+
+      {fadeOpacity > 0 && (
+        <div
+          className="pointer-events-none absolute inset-0 bg-black"
+          style={{ opacity: fadeOpacity }}
+        />
       )}
 
       {music && <audio ref={audioRef} src={music.url} preload="auto" />}

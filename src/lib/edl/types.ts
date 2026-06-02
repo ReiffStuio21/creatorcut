@@ -63,6 +63,9 @@ export interface EDLTracks {
 /** Color "look" applied to the whole video (Phase 7). */
 export type VideoFilterId = "none" | "warm" | "cool" | "mono" | "vivid" | "bright";
 
+/** Intro/outro transition. "cut" = hard cut; "fade" = fade from/to black. */
+export type TransitionId = "cut" | "fade";
+
 export interface EDL {
   /** Source asset id. */
   source: string;
@@ -72,6 +75,8 @@ export interface EDL {
   tracks: EDLTracks;
   /** Color look; defaults to "none". */
   filter: VideoFilterId;
+  /** Intro/outro transition; defaults to "cut". */
+  transition: TransitionId;
 }
 
 /** A video source the renderer can read (file in browser memory, or a URL). */
@@ -99,5 +104,6 @@ export function emptyEDL(source: string, aspectRatio: AspectRatio = "9:16"): EDL
     captions: { enabled: true, style: "bold-bottom", color: "#FFFFFF" },
     tracks: { music: [], images: [] },
     filter: "none",
+    transition: "cut",
   };
 }
