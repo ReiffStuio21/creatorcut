@@ -90,14 +90,24 @@ function forceStyle(captions) {
 }
 
 /**
- * Build ffmpeg argv. `inputPath` = source video, `srtPath` = burn-in subtitles
- * (or null), `outPath` = output mp4.
+ * Build ffmpeg argv (full parity with the browser ffmpeg-args). `inputPath` =
+ * source video. The EDL's tracks carry LOCAL FILE PATHS in `src` (the server
+ * rewrites the client's upload keys → paths). `srtPath` = burn-in subtitles.
  */
 export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
   const segs = kept(edl);
   if (!segs.length) throw new Error("Nothing to export — every word was removed.");
   const { width: w, height: h } = TARGET_SIZES[edl.aspectRatio] ?? TARGET_SIZES["9:16"];
   const outSeconds = outputDuration(edl);
+  const music = edl.tracks?.music?.[0]; // { src: path, volume }
+  const images = edl.tracks?.images ?? []; // [{ src: path, x, y }]
+  const broll = edl.tracks?.broll ?? []; // [{ src: path, start, duration }]
+
+  // input indices: video(0), music, images, b-roll
+  let nextIndex = 1;
+  const musicIndex = music ? nextIndex++ : -1;
+  const imageIndices = images.map(() => nextIndex++);
+  const brollIndices = broll.map(() => nextIndex++);
 
   const parts = [];
   const concatInputs = [];
@@ -113,6 +123,7 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
     ? `${concatInputs.join("")}concat=n=${segs.length}:v=1:a=1[vcat][outa]`
     : `${concatInputs.join("")}concat=n=${segs.length}:v=1:a=0[vcat]`;
 
+  // video chain: filter → b-roll → captions → image overlays → fade
   const chain = [...parts, concat];
   let v = "[vcat]";
   const filter = FILTERS[edl.filter] || "";
@@ -120,10 +131,27 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
     chain.push(`${v}${filter}[vf]`);
     v = "[vf]";
   }
+  broll.forEach((b, k) => {
+    const idx = brollIndices[k];
+    const end = (b.start + b.duration).toFixed(2);
+    chain.push(
+      `[${idx}:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,setpts=PTS+${b.start}/TB[bk${k}]`,
+    );
+    chain.push(`${v}[bk${k}]overlay=enable='between(t,${b.start},${end})'[bov${k}]`);
+    v = `[bov${k}]`;
+  });
   if (srtPath && edl.captions?.enabled) {
     chain.push(`${v}subtitles=${srtPath}:force_style='${forceStyle(edl.captions)}'[vcap]`);
     v = "[vcap]";
   }
+  images.forEach((im, k) => {
+    const idx = imageIndices[k];
+    chain.push(`[${idx}:v]scale=${Math.round(w * 0.25)}:-1[img${k}]`);
+    chain.push(
+      `${v}[img${k}]overlay=x=(W-w)*${(im.x / 100).toFixed(4)}:y=(H-h)*${(im.y / 100).toFixed(4)}[ov${k}]`,
+    );
+    v = `[ov${k}]`;
+  });
   const fadeStart = Math.max(0, outSeconds - FADE).toFixed(2);
   const vEnd =
     edl.transition === "fade"
@@ -131,13 +159,31 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
       : "null";
   chain.push(`${v}${vEnd}[outv]`);
 
+  // audio: speech + music mix + fade
   let aout = withAudio ? "[outa]" : null;
+  if (music) {
+    chain.push(
+      `[${musicIndex}:a]volume=${music.volume},atrim=0:${outSeconds},asetpts=PTS-STARTPTS[mus]`,
+    );
+  }
+  if (withAudio && music) {
+    chain.push(`[outa][mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[amix]`);
+    aout = "[amix]";
+  } else if (!withAudio && music) {
+    aout = "[mus]";
+  }
   if (edl.transition === "fade" && aout) {
     chain.push(`${aout}afade=t=in:st=0:d=${FADE},afade=t=out:st=${fadeStart}:d=${FADE}[aoutf]`);
     aout = "[aoutf]";
   }
 
-  const args = ["-i", inputPath, "-filter_complex", chain.join(";"), "-map", "[outv]"];
+  // inputs in index order
+  const args = ["-i", inputPath];
+  if (music) args.push("-i", music.src);
+  images.forEach((im) => args.push("-i", im.src));
+  broll.forEach((b) => args.push("-i", b.src));
+
+  args.push("-filter_complex", chain.join(";"), "-map", "[outv]");
   if (aout) args.push("-map", aout);
   args.push("-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p");
   if (aout) args.push("-c:a", "aac");

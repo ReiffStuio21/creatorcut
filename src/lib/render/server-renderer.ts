@@ -9,6 +9,8 @@ import type { CostEstimate, EDL, VideoSource } from "@/lib/edl/types";
 import type { Renderer } from "./renderer";
 import { outputDuration } from "@/lib/edl/operations";
 
+const blobFromUrl = async (url: string): Promise<Blob> => (await fetch(url)).blob();
+
 export interface ServerRenderHooks {
   onStage?: (stage: "loading" | "encoding") => void;
 }
@@ -21,11 +23,35 @@ export class ServerRenderer implements Renderer {
 
   async render(edl: EDL, source: VideoSource): Promise<Blob> {
     this.hooks.onStage?.("loading");
-    const video = await (await fetch(source.url)).blob();
-
     const form = new FormData();
-    form.append("edl", JSON.stringify(edl));
-    form.append("video", video, source.id + ".mp4");
+    form.append("video", await blobFromUrl(source.url), source.id + ".mp4");
+
+    // Upload each media file under a key, and replace its object-URL `src` with
+    // that key so the worker can map the EDL's tracks to the uploaded files.
+    const e: EDL = {
+      ...edl,
+      tracks: {
+        music: edl.tracks.music.map((m) => ({ ...m })),
+        images: edl.tracks.images.map((im) => ({ ...im })),
+        broll: edl.tracks.broll.map((b) => ({ ...b })),
+      },
+    };
+    for (const [i, m] of e.tracks.music.entries()) {
+      const key = `m_music_${i}`;
+      form.append(key, await blobFromUrl(m.src), key);
+      m.src = key;
+    }
+    for (const [i, im] of e.tracks.images.entries()) {
+      const key = `m_image_${i}`;
+      form.append(key, await blobFromUrl(im.src), key);
+      im.src = key;
+    }
+    for (const [i, b] of e.tracks.broll.entries()) {
+      const key = `m_broll_${i}`;
+      form.append(key, await blobFromUrl(b.src), key);
+      b.src = key;
+    }
+    form.append("edl", JSON.stringify(e));
 
     this.hooks.onStage?.("encoding");
     const res = await fetch(`${this.workerUrl.replace(/\/$/, "")}/render`, {

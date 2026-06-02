@@ -53,7 +53,13 @@ const server = http.createServer((req, res) => {
   const inPath = path.join(TMP, `${id}-in`);
   const outPath = path.join(TMP, `${id}-out.mp4`);
   const srtPath = path.join(TMP, `${id}.srt`);
-  const cleanup = () => [inPath, outPath, srtPath].forEach((f) => fs.existsSync(f) && fs.unlinkSync(f));
+  // media files uploaded under their EDL "src" key → saved file path
+  const mediaPaths = {};
+  const writes = [];
+  const cleanup = () =>
+    [inPath, outPath, srtPath, ...Object.values(mediaPaths)].forEach(
+      (f) => f && fs.existsSync(f) && fs.unlinkSync(f),
+    );
 
   let edl = null;
   const bb = Busboy({ headers: req.headers, limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
@@ -67,10 +73,22 @@ const server = http.createServer((req, res) => {
       }
     }
   });
-  bb.on("file", (_name, stream) => stream.pipe(fs.createWriteStream(inPath)));
+  bb.on("file", (name, stream) => {
+    const dest = name === "video" ? inPath : path.join(TMP, `${id}-${name}`);
+    if (name !== "video") mediaPaths[name] = dest;
+    const ws = fs.createWriteStream(dest);
+    writes.push(new Promise((resolve) => ws.on("close", resolve)));
+    stream.pipe(ws);
+  });
   bb.on("close", async () => {
     try {
       if (!edl) throw new Error("missing edl");
+      await Promise.all(writes); // ensure all uploads are flushed to disk
+      // rewrite track src keys → saved file paths
+      for (const m of edl.tracks?.music ?? []) if (mediaPaths[m.src]) m.src = mediaPaths[m.src];
+      for (const im of edl.tracks?.images ?? []) if (mediaPaths[im.src]) im.src = mediaPaths[im.src];
+      for (const b of edl.tracks?.broll ?? []) if (mediaPaths[b.src]) b.src = mediaPaths[b.src];
+
       fs.writeFileSync(srtPath, buildSrt(edl));
       const withAudio = await hasAudio(inPath);
       const args = buildArgs(edl, { inputPath: inPath, srtPath, outPath, withAudio });
