@@ -102,9 +102,9 @@ See [`.env.local.example`](.env.local.example). When you wire real services:
 
 ## Status & roadmap
 
-**Done (verified):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · color looks · MP4 export · responsive UI + onboarding.
+**Done (verified live):** transcript-cut editing · filler/silence cleanup · captions (preview + burn-in) · music + logo overlays · color looks · MP4 export · **real Deepgram transcription** (rate-limited) · **Supabase auth + saved projects** (DB + Storage, RLS) · responsive UI + onboarding.
 
-**Next:** real transcription provider (Deepgram/AssemblyAI/Whisper — a single `transcribeWithProvider` function) · Supabase auth + saved projects · server-side rendering for longer clips · transitions · b-roll insertion.
+**Next:** server-side rendering for longer clips · transitions · b-roll insertion · persist music/logos with a project.
 
 The full build plan and decisions live in **[PLAN.md](PLAN.md)** — the single source of truth.
 
