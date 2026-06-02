@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Film, Music, ImagePlus, X } from "lucide-react";
+import { Film, Music, ImagePlus, Clapperboard, X } from "lucide-react";
 import { useEditorStore } from "@/lib/store/editor";
 import { formatBytes, formatDuration, cn } from "@/lib/utils";
 import { UploadDropzone } from "./upload-dropzone";
@@ -47,6 +47,7 @@ export function MediaPanel() {
 
       <MusicSection />
       <ImagesSection />
+      <BrollSection />
     </div>
   );
 }
@@ -198,6 +199,85 @@ function ImagesSection() {
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) addImage(f);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
+
+function BrollSection() {
+  const broll = useEditorStore((s) => s.broll);
+  const addBroll = useEditorStore((s) => s.addBroll);
+  const setBrollStart = useEditorStore((s) => s.setBrollStart);
+  const removeBroll = useEditorStore((s) => s.removeBroll);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // read the clip's duration from a throwaway <video> before adding it
+  function handleFile(file: File) {
+    const probe = document.createElement("video");
+    probe.preload = "metadata";
+    const url = URL.createObjectURL(file);
+    const done = (d: number) => {
+      addBroll(file, Number.isFinite(d) && d > 0 ? d : 5);
+      URL.revokeObjectURL(url);
+    };
+    probe.onloadedmetadata = () => done(probe.duration);
+    probe.onerror = () => done(5);
+    probe.src = url;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <SectionLabel>B-roll cutaways</SectionLabel>
+
+      {broll.map((b) => (
+        <div key={b.id} className="flex flex-col gap-2 rounded-xl border border-foreground/10 p-3">
+          <div className="flex items-center gap-2">
+            <Clapperboard className="h-3.5 w-3.5 shrink-0 text-foreground/50" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-xs" title={b.fileName}>
+              {b.fileName}
+            </span>
+            <button
+              type="button"
+              onClick={() => removeBroll(b.id)}
+              className="rounded p-0.5 text-foreground/40 hover:text-foreground"
+              aria-label="Remove b-roll"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-foreground/50">
+            Start at
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              value={b.start}
+              onChange={(e) => setBrollStart(b.id, Math.max(0, Number(e.target.value)))}
+              className="w-16 rounded border border-foreground/15 bg-transparent px-2 py-1 text-right tabular-nums"
+            />
+            s · covers {formatDuration(b.duration)}
+          </label>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-foreground/15 px-3 py-2 text-xs font-medium hover:border-foreground/30"
+      >
+        <Clapperboard className="h-3.5 w-3.5" aria-hidden />
+        Add b-roll clip
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/mp4,video/quicktime,video/webm"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
           e.target.value = "";
         }}
       />

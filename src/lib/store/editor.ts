@@ -57,6 +57,15 @@ export interface ImageAsset {
   y: number;
 }
 
+/** A b-roll cutaway clip (Phase 8). Covers [start, start+duration] of output. */
+export interface BrollAsset {
+  id: string;
+  url: string; // object URL
+  fileName: string;
+  start: number;
+  duration: number;
+}
+
 interface EditorState {
   video: LoadedVideo | null;
 
@@ -68,9 +77,10 @@ interface EditorState {
   edl: EDL | null;
   aspectRatio: AspectRatio;
 
-  // User media (Phase 5) — folded into edl.tracks at export time
+  // User media (Phase 5/8) — folded into edl.tracks at export time
   music: MusicAsset | null;
   images: ImageAsset[];
+  broll: BrollAsset[];
 
   // Color look + transition (Phase 7 / 8)
   filter: VideoFilterId;
@@ -102,6 +112,9 @@ interface EditorState {
   addImage: (file: File) => void;
   setImagePosition: (id: string, x: number, y: number) => void;
   removeImage: (id: string) => void;
+  addBroll: (file: File, duration: number) => void;
+  setBrollStart: (id: string, start: number) => void;
+  removeBroll: (id: string) => void;
   setFilter: (filter: VideoFilterId) => void;
   setTransition: (transition: TransitionId) => void;
   setProjectId: (id: string) => void;
@@ -127,6 +140,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   aspectRatio: "9:16",
   music: null,
   images: [],
+  broll: [],
   filter: "none",
   transition: "cut",
   projectId: null,
@@ -281,6 +295,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return { images: s.images.filter((im) => im.id !== id) };
     }),
 
+  addBroll: (file, duration) =>
+    set((s) => ({
+      broll: [
+        ...s.broll,
+        {
+          id: crypto.randomUUID(),
+          url: URL.createObjectURL(file),
+          fileName: file.name,
+          start: 0,
+          duration,
+        },
+      ],
+    })),
+
+  setBrollStart: (id, start) =>
+    set((s) => ({
+      broll: s.broll.map((b) => (b.id === id ? { ...b, start } : b)),
+    })),
+
+  removeBroll: (id) =>
+    set((s) => {
+      const target = s.broll.find((b) => b.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return { broll: s.broll.filter((b) => b.id !== id) };
+    }),
+
   setFilter: (filter) => set({ filter }),
 
   setTransition: (transition) => set({ transition }),
@@ -293,6 +333,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
     if (s.music) URL.revokeObjectURL(s.music.url);
     s.images.forEach((im) => URL.revokeObjectURL(im.url));
+    s.broll.forEach((b) => URL.revokeObjectURL(b.url));
     set({
       video: {
         id: crypto.randomUUID(),
@@ -325,6 +366,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         x: im.x,
         y: im.y,
       })),
+      broll: [],
       projectId: id,
       exportStep: idleStep,
       exportStage: null,
@@ -334,7 +376,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   runExport: async () => {
-    const { video, edl, music, images, filter, transition } = get();
+    const { video, edl, music, images, broll, filter, transition } = get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
     const prevUrl = get().exportUrl;
@@ -364,6 +406,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             end: outDur,
             x: im.x,
             y: im.y,
+          })),
+          broll: broll.map((b) => ({
+            src: b.url,
+            start: b.start,
+            duration: b.duration,
           })),
         },
       };
@@ -418,6 +465,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
     if (s.music) URL.revokeObjectURL(s.music.url);
     s.images.forEach((im) => URL.revokeObjectURL(im.url));
+    s.broll.forEach((b) => URL.revokeObjectURL(b.url));
     set({
       video: null,
       transcript: null,
@@ -425,6 +473,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       edl: null,
       music: null,
       images: [],
+      broll: [],
       filter: "none",
       transition: "cut",
       projectId: null,

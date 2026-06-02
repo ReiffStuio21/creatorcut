@@ -96,6 +96,16 @@ describe("ffmpegArgsForExport", () => {
     expect(fc).toContain("[vf]null[outv]");
   });
 
+  it("overlays b-roll over a time window", () => {
+    const args = ffmpegArgsForExport(edl(), {
+      broll: [{ path: "broll.mp4", start: 1, duration: 2 }],
+    });
+    expect(args).toContain("broll.mp4");
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("setpts=PTS+1/TB");
+    expect(fc).toContain("overlay=enable='between(t,1,3.00)'");
+  });
+
   it("orders inputs video → music → images", () => {
     const args = ffmpegArgsForExport(edl(), {
       music: { path: "song.mp3", volume: 0.5 },

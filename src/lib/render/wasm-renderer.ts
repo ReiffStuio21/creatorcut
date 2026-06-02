@@ -50,6 +50,7 @@ export class WasmRenderer implements Renderer {
     ffmpeg.on("progress", onProgress);
 
     const imagePaths: string[] = [];
+    const brollPaths: string[] = [];
     try {
       await ffmpeg.writeFile(INPUT_NAME, await fetchFile(source.url));
 
@@ -86,12 +87,22 @@ export class WasmRenderer implements Renderer {
         }),
       );
 
+      const broll = await Promise.all(
+        (edl.tracks.broll ?? []).map(async (b, k) => {
+          const path = `broll_in_${k}`;
+          await ffmpeg.writeFile(path, await fetchFile(b.src));
+          brollPaths.push(path);
+          return { path, start: b.start, duration: b.duration };
+        }),
+      );
+
       const videoFilter = getFilter(edl.filter).ffmpeg || undefined;
       const args = ffmpegArgsForExport(edl, {
         withAudio,
         captions,
         music,
         images,
+        broll,
         videoFilter,
         transition: edl.transition,
       });
@@ -113,6 +124,7 @@ export class WasmRenderer implements Renderer {
       await ffmpeg.deleteFile(SRT_PATH).catch(() => {});
       await ffmpeg.deleteFile(MUSIC_PATH).catch(() => {});
       await Promise.all(imagePaths.map((p) => ffmpeg.deleteFile(p).catch(() => {})));
+      await Promise.all(brollPaths.map((p) => ffmpeg.deleteFile(p).catch(() => {})));
     }
   }
 

@@ -55,9 +55,19 @@ export interface ImageOverlay {
   y: number;
 }
 
+/** A b-roll cutaway: a video shown full-frame over a window of OUTPUT time. */
+export interface BrollOverlay {
+  src: string;
+  /** Where it starts in the OUTPUT timeline, seconds. */
+  start: number;
+  /** How long it covers, seconds. */
+  duration: number;
+}
+
 export interface EDLTracks {
   music: MusicTrack[];
   images: ImageOverlay[];
+  broll: BrollOverlay[];
 }
 
 /** Color "look" applied to the whole video (Phase 7). */
@@ -102,7 +112,7 @@ export function emptyEDL(source: string, aspectRatio: AspectRatio = "9:16"): EDL
     aspectRatio,
     segments: [],
     captions: { enabled: true, style: "bold-bottom", color: "#FFFFFF" },
-    tracks: { music: [], images: [] },
+    tracks: { music: [], images: [], broll: [] },
     filter: "none",
     transition: "cut",
   };

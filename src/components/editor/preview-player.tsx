@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useEditorStore } from "@/lib/store/editor";
+import { useEditorStore, type BrollAsset } from "@/lib/store/editor";
 import { outputDuration, skipToKept, sourceToOutputTime } from "@/lib/edl/operations";
 import { activeCue, buildCaptionCues } from "@/lib/captions/cues";
 import type { CaptionStyle } from "@/lib/edl/types";
@@ -24,6 +24,7 @@ export function PreviewPlayer() {
   const edl = useEditorStore((s) => s.edl);
   const music = useEditorStore((s) => s.music);
   const images = useEditorStore((s) => s.images);
+  const broll = useEditorStore((s) => s.broll);
   const filter = useEditorStore((s) => s.filter);
   const transition = useEditorStore((s) => s.transition);
   const setMetadata = useEditorStore((s) => s.setMetadata);
@@ -31,6 +32,9 @@ export function PreviewPlayer() {
   const localRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [playing, setPlaying] = useState(false);
+
+  const outputTime = edl ? sourceToOutputTime(edl, currentTime) : currentTime;
 
   const ref = useCallback(
     (el: HTMLVideoElement | null) => {
@@ -81,8 +85,14 @@ export function PreviewPlayer() {
       }
       setCurrentTime(el.currentTime);
     };
-    const onPlay = () => audioRef.current?.play().catch(() => {});
-    const onPause = () => audioRef.current?.pause();
+    const onPlay = () => {
+      setPlaying(true);
+      audioRef.current?.play().catch(() => {});
+    };
+    const onPause = () => {
+      setPlaying(false);
+      audioRef.current?.pause();
+    };
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
@@ -121,6 +131,11 @@ export function PreviewPlayer() {
         }}
       />
 
+      {/* b-roll cutaways (cover the main video during their window) */}
+      {broll.map((b) => (
+        <BrollClipVideo key={b.id} clip={b} outputTime={outputTime} playing={playing} />
+      ))}
+
       {/* image/logo overlays (approximate — export is authoritative) */}
       {images.map((im) => (
         // eslint-disable-next-line @next/next/no-img-element
@@ -153,5 +168,42 @@ export function PreviewPlayer() {
 
       {music && <audio ref={audioRef} src={music.url} preload="auto" />}
     </div>
+  );
+}
+
+/** A single b-roll clip, shown full-frame and synced during its output window. */
+function BrollClipVideo({
+  clip,
+  outputTime,
+  playing,
+}: {
+  clip: BrollAsset;
+  outputTime: number;
+  playing: boolean;
+}) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const visible = outputTime >= clip.start && outputTime < clip.start + clip.duration;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (visible) {
+      const target = outputTime - clip.start;
+      if (Math.abs(el.currentTime - target) > 0.25) el.currentTime = target;
+      if (playing && el.paused) el.play().catch(() => {});
+      if (!playing && !el.paused) el.pause();
+    } else if (!el.paused) {
+      el.pause();
+    }
+  }, [visible, outputTime, playing, clip.start]);
+
+  return (
+    <video
+      ref={ref}
+      src={clip.url}
+      muted
+      playsInline
+      className={cn("pointer-events-none absolute inset-0 h-full w-full object-cover", !visible && "hidden")}
+    />
   );
 }

@@ -48,6 +48,13 @@ export interface ImageInput {
   y: number;
 }
 
+/** A b-roll cutaway input: full-frame video shown during [start, start+duration]. */
+export interface BrollInput {
+  path: string;
+  start: number;
+  duration: number;
+}
+
 export interface ExportOptions {
   /**
    * Whether the source has an audio stream. When false, the graph omits all
@@ -62,6 +69,8 @@ export interface ExportOptions {
   music?: MusicInput;
   /** Image/logo overlays, drawn in order (Phase 5). */
   images?: ImageInput[];
+  /** B-roll cutaways shown full-frame over a window of output time. */
+  broll?: BrollInput[];
   /** Output length in seconds — used to bound the music track. */
   outputSeconds?: number;
   /** FFmpeg color-filter chain applied to the base video (Phase 7). */
@@ -83,6 +92,7 @@ export function ffmpegArgsForExport(
     captions,
     music,
     images = [],
+    broll = [],
     outputSeconds,
     videoFilter,
     transition = "cut",
@@ -100,6 +110,7 @@ export function ffmpegArgsForExport(
   let nextIndex = 1;
   const musicIndex = music ? nextIndex++ : -1;
   const imageIndices = images.map(() => nextIndex++);
+  const brollIndices = broll.map(() => nextIndex++);
 
   const parts: string[] = [];
   const concatInputs: string[] = [];
@@ -130,6 +141,18 @@ export function ffmpegArgsForExport(
     chain.push(`${v}${videoFilter}[vf]`);
     v = "[vf]";
   }
+  // B-roll cutaways: scale to fill, shift to its output start, show during the
+  // window. Placed before captions/logo so those stay visible over the b-roll.
+  broll.forEach((b, k) => {
+    const idx = brollIndices[k];
+    const end = (b.start + b.duration).toFixed(2);
+    chain.push(
+      `[${idx}:v]scale=${w}:${h}:force_original_aspect_ratio=increase,` +
+        `crop=${w}:${h},setsar=1,setpts=PTS+${b.start}/TB[bk${k}]`,
+    );
+    chain.push(`${v}[bk${k}]overlay=enable='between(t,${b.start},${end})'[bov${k}]`);
+    v = `[bov${k}]`;
+  });
   if (captions) {
     chain.push(
       `${v}subtitles=${captions.srtFile}:fontsdir=${captions.fontsDir}:` +
@@ -185,6 +208,7 @@ export function ffmpegArgsForExport(
   const args = ["-i", INPUT_NAME];
   if (music) args.push("-i", music.path);
   images.forEach((im) => args.push("-i", im.path));
+  broll.forEach((b) => args.push("-i", b.path));
 
   args.push("-filter_complex", filterComplex, "-map", "[outv]");
   if (aout) args.push("-map", aout);
