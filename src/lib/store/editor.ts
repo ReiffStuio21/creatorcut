@@ -297,6 +297,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         height: meta.height ?? 0,
       },
       edl,
+      aspectRatio: edl.aspectRatio,
       filter: edl.filter ?? "none",
       transcript: null,
       transcribe: doneStep(),
