@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2, Mic, X } from "lucide-react";
 import { useEditorStore } from "@/lib/store/editor";
 
@@ -64,7 +65,14 @@ export function VoiceoverPanel() {
       </div>
 
       {step.status === "error" && (
-        <p className="text-[11px] text-red-500">{step.error}</p>
+        <p className="text-[11px] text-red-500">
+          {step.error}{" "}
+          {/log in/i.test(step.error ?? "") && (
+            <Link href="/login" className="font-medium underline">
+              Log in
+            </Link>
+          )}
+        </p>
       )}
 
       {voiceover && (

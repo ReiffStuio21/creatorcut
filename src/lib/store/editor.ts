@@ -269,7 +269,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           "@/lib/transcription/extract-audio"
         );
         const audio = await extractAudioMp3(video.url);
-        res = await fetch("/api/transcribe", {
+        res = await fetch(`/api/transcribe?d=${Math.round(video.duration)}`, {
           method: "POST",
           headers: { "Content-Type": "audio/mpeg" },
           body: audio as BodyInit,

@@ -3,6 +3,8 @@
  * Body: { text, voice }. Returns audio/mpeg. Needs OPENAI_API_KEY; rate-limited
  * because it spends real credits.
  */
+import { authConfigured, getOptionalUser } from "@/lib/auth/user";
+
 const VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
 const MAX_CHARS = 2000;
 const RATE_WINDOW_MS = 60_000;
@@ -27,6 +29,11 @@ export async function POST(request: Request) {
     return new Response("Voiceover isn't configured yet (set OPENAI_API_KEY).", {
       status: 501,
     });
+  }
+
+  // Voiceover spends real credits with no free fallback → signed-in users only.
+  if (authConfigured() && !(await getOptionalUser())) {
+    return new Response("Log in to generate a voiceover.", { status: 401 });
   }
 
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";

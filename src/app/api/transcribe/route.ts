@@ -3,6 +3,7 @@ import {
   mapDeepgramResponse,
   type DeepgramResponse,
 } from "@/lib/transcription/provider";
+import { authConfigured, getOptionalUser } from "@/lib/auth/user";
 
 /**
  * POST /api/transcribe
@@ -42,7 +43,11 @@ export async function POST(request: Request) {
   const key = process.env.DEEPGRAM_API_KEY ?? process.env.TRANSCRIPTION_API_KEY;
   const contentType = request.headers.get("content-type") ?? "";
 
-  if (key && contentType.startsWith("audio/")) {
+  // Real (paid) transcription is for signed-in users. Anonymous visitors fall
+  // through to the free mock so the demo still works without spending credits.
+  const authed = authConfigured() ? await getOptionalUser() : true;
+
+  if (key && authed && contentType.startsWith("audio/")) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     if (rateLimited(ip)) {
       return new Response("Too many transcription requests. Please wait a minute.", {
@@ -75,13 +80,16 @@ export async function POST(request: Request) {
     return Response.json(mapDeepgramResponse(json));
   }
 
-  // Mock fallback (JSON body with durationSeconds).
-  let durationSeconds = 0;
-  try {
-    const body = await request.json();
-    durationSeconds = Number(body?.durationSeconds) || 0;
-  } catch {
-    // tolerate empty/invalid body
+  // Mock fallback (anonymous, or no key). Duration from ?d= (audio path) or the
+  // JSON body (mock path).
+  let durationSeconds = Number(new URL(request.url).searchParams.get("d")) || 0;
+  if (!durationSeconds) {
+    try {
+      const body = await request.json();
+      durationSeconds = Number(body?.durationSeconds) || 0;
+    } catch {
+      // tolerate empty/invalid body
+    }
   }
   return Response.json(generateMockTranscript(durationSeconds));
 }
