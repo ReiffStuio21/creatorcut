@@ -90,11 +90,14 @@ interface EditorState {
   // Color look + transition (Phase 7 / 8)
   filter: VideoFilterId;
   transition: TransitionId;
+  enhance: boolean;
+  denoise: boolean;
 
   // Background removal (on-device). originalVideo snapshots the pre-bake source
   // so mode switches re-bake from the original and "Off" restores it.
-  backgroundMode: "none" | "color" | "blur";
+  backgroundMode: "none" | "color" | "blur" | "image";
   bgColor: string;
+  bgImageUrl: string | null;
   originalVideo: LoadedVideo | null;
   removeBg: StepState;
   removeBgProgress: number;
@@ -135,8 +138,11 @@ interface EditorState {
   removeBroll: (id: string) => void;
   setFilter: (filter: VideoFilterId) => void;
   setTransition: (transition: TransitionId) => void;
+  setEnhance: (on: boolean) => void;
+  setDenoise: (on: boolean) => void;
   setBgColor: (color: string) => void;
-  runRemoveBackground: (mode: "color" | "blur") => Promise<void>;
+  addBgImage: (file: File) => void;
+  runRemoveBackground: (mode: "color" | "blur" | "image") => Promise<void>;
   restoreBackground: () => void;
   setServerRender: (on: boolean) => void;
   setProjectId: (id: string) => void;
@@ -168,8 +174,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   broll: [],
   filter: "none",
   transition: "cut",
+  enhance: false,
+  denoise: false,
   backgroundMode: "none",
   bgColor: "#22c55e",
+  bgImageUrl: null,
   originalVideo: null,
   removeBg: idleStep,
   removeBgProgress: 0,
@@ -189,6 +198,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (prevExport) URL.revokeObjectURL(prevExport);
     const prevOrig = get().originalVideo;
     if (prevOrig && prevOrig !== prev) URL.revokeObjectURL(prevOrig.url);
+    const prevBgImg = get().bgImageUrl;
+    if (prevBgImg) URL.revokeObjectURL(prevBgImg);
     set({
       video: {
         id: crypto.randomUUID(),
@@ -206,7 +217,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       edl: null,
       videoVolume: 1,
       selectedSegmentId: null,
+      enhance: false,
+      denoise: false,
       backgroundMode: "none",
+      bgImageUrl: null,
       originalVideo: null,
       removeBg: idleStep,
       removeBgProgress: 0,
@@ -378,7 +392,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setTransition: (transition) => set({ transition }),
 
+  setEnhance: (enhance) => set({ enhance }),
+
+  setDenoise: (denoise) => set({ denoise }),
+
   setBgColor: (bgColor) => set({ bgColor }),
+
+  addBgImage: (file) => {
+    const prev = get().bgImageUrl;
+    if (prev) URL.revokeObjectURL(prev);
+    set({ bgImageUrl: URL.createObjectURL(file) });
+  },
 
   runRemoveBackground: async (mode) => {
     const s = get();
@@ -393,10 +417,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     try {
       const { removeBackground } = await import("@/lib/background/remove");
+      const imageUrl = get().bgImageUrl;
       const bg =
         mode === "blur"
           ? ({ type: "blur" } as const)
-          : ({ type: "color", color: get().bgColor } as const);
+          : mode === "image" && imageUrl
+            ? ({ type: "image", imageUrl } as const)
+            : ({ type: "color", color: get().bgColor } as const);
       const blob = await removeBackground(original.url, bg, (p) =>
         set({ removeBgProgress: p }),
       );
@@ -461,6 +488,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       aspectRatio: edl.aspectRatio,
       filter: edl.filter ?? "none",
       transition: edl.transition ?? "cut",
+      enhance: edl.enhance ?? false,
+      denoise: edl.denoise ?? false,
       videoVolume: edl.volume ?? 1,
       selectedSegmentId: null,
       transcript: null,
@@ -490,7 +519,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   runExport: async () => {
-    const { video, edl, music, images, broll, filter, transition, videoVolume } = get();
+    const { video, edl, music, images, broll, filter, transition, videoVolume, enhance, denoise } =
+      get();
     if (!video || !edl || get().exportStep.status === "running") return;
 
     const prevUrl = get().exportUrl;
@@ -511,6 +541,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         filter,
         transition,
         volume: videoVolume,
+        enhance,
+        denoise,
         tracks: {
           music: music
             ? [{ src: music.url, start: 0, volume: music.volume }]
@@ -595,6 +627,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (s.video) URL.revokeObjectURL(s.video.url);
     if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
     if (s.originalVideo && s.originalVideo !== s.video) URL.revokeObjectURL(s.originalVideo.url);
+    if (s.bgImageUrl) URL.revokeObjectURL(s.bgImageUrl);
     if (s.music) URL.revokeObjectURL(s.music.url);
     s.images.forEach((im) => URL.revokeObjectURL(im.url));
     s.broll.forEach((b) => URL.revokeObjectURL(b.url));
@@ -610,8 +643,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       broll: [],
       filter: "none",
       transition: "cut",
+      enhance: false,
+      denoise: false,
       backgroundMode: "none",
       bgColor: "#22c55e",
+      bgImageUrl: null,
       originalVideo: null,
       removeBg: idleStep,
       removeBgProgress: 0,

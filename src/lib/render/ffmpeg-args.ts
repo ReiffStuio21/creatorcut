@@ -79,6 +79,10 @@ export interface ExportOptions {
   transition?: "cut" | "fade";
   /** Master volume for the video's own audio (1 = unchanged). */
   videoVolume?: number;
+  /** One-tap auto color/sharpness boost. */
+  enhance?: boolean;
+  /** Denoise the speech audio (ffmpeg afftdn). */
+  denoise?: boolean;
 }
 
 const FADE_SECONDS = 0.4;
@@ -99,6 +103,8 @@ export function ffmpegArgsForExport(
     videoFilter,
     transition = "cut",
     videoVolume = 1,
+    enhance = false,
+    denoise = false,
   }: ExportOptions = {},
 ): string[] {
   const kept = toKeptSegments(edl);
@@ -138,8 +144,12 @@ export function ffmpegArgsForExport(
 
   const chain = [...parts, concat];
 
-  // Video post-chain: color filter → captions burn → image overlays → [outv].
+  // Video post-chain: enhance → color filter → captions → overlays → [outv].
   let v = "[vcat]";
+  if (enhance) {
+    chain.push(`${v}eq=contrast=1.06:brightness=0.03:saturation=1.14,unsharp=5:5:0.8[venh]`);
+    v = "[venh]";
+  }
   if (videoFilter) {
     chain.push(`${v}${videoFilter}[vf]`);
     v = "[vf]";
@@ -181,8 +191,12 @@ export function ffmpegArgsForExport(
       : "null";
   chain.push(`${v}${vEnd}[outv]`);
 
-  // Audio post-chain: master volume on the speech, then mix music under it.
+  // Audio post-chain: denoise → master volume → mix music.
   let speech = withAudio ? "[outa]" : null;
+  if (speech && denoise) {
+    chain.push(`${speech}afftdn[outadn]`);
+    speech = "[outadn]";
+  }
   if (speech && videoVolume !== 1) {
     chain.push(`${speech}volume=${videoVolume.toFixed(3)}[outav]`);
     speech = "[outav]";

@@ -123,9 +123,13 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
     ? `${concatInputs.join("")}concat=n=${segs.length}:v=1:a=1[vcat][outa]`
     : `${concatInputs.join("")}concat=n=${segs.length}:v=1:a=0[vcat]`;
 
-  // video chain: filter → b-roll → captions → image overlays → fade
+  // video chain: enhance → filter → b-roll → captions → image overlays → fade
   const chain = [...parts, concat];
   let v = "[vcat]";
+  if (edl.enhance) {
+    chain.push(`${v}eq=contrast=1.06:brightness=0.03:saturation=1.14,unsharp=5:5:0.8[venh]`);
+    v = "[venh]";
+  }
   const filter = FILTERS[edl.filter] || "";
   if (filter) {
     chain.push(`${v}${filter}[vf]`);
@@ -159,9 +163,13 @@ export function buildArgs(edl, { inputPath, srtPath, outPath, withAudio }) {
       : "null";
   chain.push(`${v}${vEnd}[outv]`);
 
-  // audio: master volume on speech + music mix + fade
+  // audio: denoise → master volume → music mix → fade
   const videoVolume = typeof edl.volume === "number" ? edl.volume : 1;
   let speech = withAudio ? "[outa]" : null;
+  if (speech && edl.denoise) {
+    chain.push(`${speech}afftdn[outadn]`);
+    speech = "[outadn]";
+  }
   if (speech && videoVolume !== 1) {
     chain.push(`${speech}volume=${videoVolume.toFixed(3)}[outav]`);
     speech = "[outav]";

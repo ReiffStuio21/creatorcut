@@ -69,6 +69,14 @@ describe("ffmpegArgsForExport", () => {
     expect(fc).toContain("[outa]volume=0.500[outav]");
   });
 
+  it("applies auto-enhance to the video and denoise to the audio", () => {
+    const args = ffmpegArgsForExport(edl(), { enhance: true, denoise: true });
+    const fc = args[args.indexOf("-filter_complex") + 1];
+    expect(fc).toContain("[vcat]eq=contrast=1.06");
+    expect(fc).toContain("unsharp=");
+    expect(fc).toContain("[outa]afftdn[outadn]");
+  });
+
   it("overlays an image at the given position", () => {
     const args = ffmpegArgsForExport(edl(), {
       images: [{ path: "logo.png", x: 50, y: 12 }],

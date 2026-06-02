@@ -20,6 +20,8 @@ export function Timeline() {
   const split = useEditorStore((s) => s.splitAtPlayhead);
   const seekTo = useEditorStore((s) => s.seekTo);
   const setVideoVolume = useEditorStore((s) => s.setVideoVolume);
+  const denoise = useEditorStore((s) => s.denoise);
+  const setDenoise = useEditorStore((s) => s.setDenoise);
 
   if (!edl || !done) return null;
   const selected = edl.segments.find((s) => s.id === selectedId) ?? null;
@@ -54,7 +56,20 @@ export function Timeline() {
           )}
         </button>
 
-        <label className="ml-auto flex items-center gap-2 text-[11px] text-foreground/50">
+        <button
+          type="button"
+          onClick={() => setDenoise(!denoise)}
+          className={cn(
+            "ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+            denoise
+              ? "border-transparent accent-gradient text-white"
+              : "border-foreground/15 hover:bg-foreground/5",
+          )}
+        >
+          Denoise
+        </button>
+
+        <label className="flex items-center gap-2 text-[11px] text-foreground/50">
           <Volume2 className="h-3.5 w-3.5" aria-hidden />
           <input
             type="range"

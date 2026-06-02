@@ -16,6 +16,8 @@ export function LookPanel() {
   const setFilter = useEditorStore((s) => s.setFilter);
   const transition = useEditorStore((s) => s.transition);
   const setTransition = useEditorStore((s) => s.setTransition);
+  const enhance = useEditorStore((s) => s.enhance);
+  const setEnhance = useEditorStore((s) => s.setEnhance);
 
   if (!video) {
     return (
@@ -27,6 +29,16 @@ export function LookPanel() {
 
   return (
     <div className="mt-2 flex flex-col gap-3">
+      <label className="flex items-center justify-between rounded-md border border-foreground/10 px-2.5 py-1.5 text-xs">
+        <span className="font-medium">✨ Auto enhance</span>
+        <input
+          type="checkbox"
+          checked={enhance}
+          onChange={(e) => setEnhance(e.target.checked)}
+          className="h-3.5 w-3.5 accent-[var(--accent)]"
+        />
+      </label>
+
       <div className="grid grid-cols-3 gap-1.5">
         {FILTERS.map((f) => (
           <button

@@ -35,7 +35,20 @@ async function getSegmenter(): Promise<ImageSegmenter> {
   return segmenterPromise;
 }
 
-export type BackgroundMode = { type: "color"; color: string } | { type: "blur" };
+export type BackgroundMode =
+  | { type: "color"; color: string }
+  | { type: "blur" }
+  | { type: "image"; imageUrl: string };
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error("Could not load the background image."));
+    img.src = url;
+  });
+}
 
 type VideoWithRVFC = HTMLVideoElement & {
   requestVideoFrameCallback: (cb: (now: number) => void) => number;
@@ -65,6 +78,7 @@ export async function removeBackground(
   const w = video.videoWidth || 720;
   const h = video.videoHeight || 1280;
   const duration = video.duration || 0;
+  const bgImg = mode.type === "image" ? await loadImage(mode.imageUrl) : null;
 
   const make = () => {
     const c = document.createElement("canvas");
@@ -104,6 +118,12 @@ export async function removeBackground(
     if (mode.type === "color") {
       ctx.fillStyle = mode.color;
       ctx.fillRect(0, 0, w, h);
+    } else if (mode.type === "image" && bgImg) {
+      // cover-fit the background image
+      const scale = Math.max(w / bgImg.width, h / bgImg.height);
+      const dw = bgImg.width * scale;
+      const dh = bgImg.height * scale;
+      ctx.drawImage(bgImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
     } else {
       ctx.filter = "blur(14px)";
       ctx.drawImage(video, 0, 0, w, h);

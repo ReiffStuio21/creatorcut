@@ -89,6 +89,10 @@ export interface EDL {
   transition: TransitionId;
   /** Master audio volume for the video's own sound, 0..1.5 (defaults to 1). */
   volume?: number;
+  /** One-tap auto color/sharpness boost. */
+  enhance?: boolean;
+  /** AI-ish audio denoise (ffmpeg afftdn). */
+  denoise?: boolean;
 }
 
 /** A video source the renderer can read (file in browser memory, or a URL). */

@@ -106,6 +106,8 @@ export class WasmRenderer implements Renderer {
         videoFilter,
         transition: edl.transition,
         videoVolume: edl.volume ?? 1,
+        enhance: edl.enhance ?? false,
+        denoise: edl.denoise ?? false,
       });
 
       this.hooks.onStage?.("encoding");

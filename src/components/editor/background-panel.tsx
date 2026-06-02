@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Sparkles } from "lucide-react";
+import { useRef } from "react";
+import { Loader2, Sparkles, ImagePlus } from "lucide-react";
 import { useEditorStore } from "@/lib/store/editor";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,9 @@ export function BackgroundPanel() {
   const progress = useEditorStore((s) => s.removeBgProgress);
   const run = useEditorStore((s) => s.runRemoveBackground);
   const restore = useEditorStore((s) => s.restoreBackground);
+  const bgImageUrl = useEditorStore((s) => s.bgImageUrl);
+  const addBgImage = useEditorStore((s) => s.addBgImage);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   if (!video) {
     return (
@@ -90,6 +94,41 @@ export function BackgroundPanel() {
             Original
           </button>
         )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {bgImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={bgImageUrl} alt="" className="h-9 w-12 rounded object-cover" />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => imageInputRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-md border border-foreground/15 px-2 py-1.5 text-xs font-medium hover:bg-foreground/5"
+        >
+          <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+          {bgImageUrl ? "Change image" : "Use an image"}
+        </button>
+        {bgImageUrl && (
+          <button
+            type="button"
+            onClick={() => run("image")}
+            className="rounded-md accent-gradient px-2 py-1.5 text-xs font-medium text-white"
+          >
+            Apply image
+          </button>
+        )}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) addBgImage(f);
+            e.target.value = "";
+          }}
+        />
       </div>
 
       {step.status === "error" && (
