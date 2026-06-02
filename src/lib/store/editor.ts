@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Transcript } from "@/lib/transcription/provider";
+import type { Template } from "@/lib/templates";
 import type {
   AspectRatio,
   CaptionConfig,
@@ -153,6 +154,7 @@ interface EditorState {
   setTransition: (transition: TransitionId) => void;
   setEnhance: (on: boolean) => void;
   setDenoise: (on: boolean) => void;
+  applyTemplate: (t: Template) => void;
   setBgColor: (color: string) => void;
   addBgImage: (file: File) => void;
   runRemoveBackground: (mode: "color" | "blur" | "image") => Promise<void>;
@@ -470,6 +472,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setEnhance: (enhance) => set({ enhance }),
 
   setDenoise: (denoise) => set({ denoise }),
+
+  applyTemplate: (t) =>
+    set((s) => ({
+      aspectRatio: t.aspectRatio,
+      filter: t.filter,
+      transition: t.transition,
+      enhance: t.enhance,
+      denoise: t.denoise,
+      edl: s.edl
+        ? {
+            ...s.edl,
+            aspectRatio: t.aspectRatio,
+            captions: {
+              ...s.edl.captions,
+              enabled: true,
+              style: t.captionStyle,
+              color: t.captionColor,
+            },
+          }
+        : s.edl,
+    })),
 
   setBgColor: (bgColor) => set({ bgColor }),
 

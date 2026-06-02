@@ -8,6 +8,7 @@ import { ExportPanel } from "@/components/editor/export-panel";
 import { LookPanel } from "@/components/editor/look-panel";
 import { BackgroundPanel } from "@/components/editor/background-panel";
 import { VoiceoverPanel } from "@/components/editor/voiceover-panel";
+import { TemplatesPanel } from "@/components/editor/templates-panel";
 import { HeaderExportButton } from "@/components/editor/header-export-button";
 import { SaveButton } from "@/components/editor/save-button";
 import { ProjectLoader } from "@/components/editor/project-loader";
@@ -66,6 +67,10 @@ export default async function EditorPage({
 
         {/* Right — look, captions, export */}
         <aside className="flex flex-col gap-4 p-4">
+          <div>
+            <PanelLabel>Templates</PanelLabel>
+            <TemplatesPanel />
+          </div>
           <div>
             <PanelLabel>Background</PanelLabel>
             <BackgroundPanel />

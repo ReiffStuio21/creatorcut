@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Scissors, Volume2, Undo2, Trash2 } from "lucide-react";
+import { Scissors, Volume2, Undo2, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEditorStore } from "@/lib/store/editor";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,9 @@ export function Timeline() {
   const setDenoise = useEditorStore((s) => s.setDenoise);
 
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<null | "start" | "end" | "scrub">(null);
+  const [zoom, setZoom] = useState(1);
 
   // time ↔ pixel mapping over the full source span
   const t0 = edl?.segments[0]?.start ?? 0;
@@ -59,6 +61,18 @@ export function Timeline() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag]);
+
+  // keep the playhead in view while scrubbing/playing when zoomed in
+  useEffect(() => {
+    const sc = scrollRef.current;
+    const tr = trackRef.current;
+    if (!sc || !tr || zoom <= 1) return;
+    const x = (pn(currentTime) / 100) * tr.offsetWidth;
+    if (x < sc.scrollLeft + 24 || x > sc.scrollLeft + sc.clientWidth - 24) {
+      sc.scrollLeft = x - sc.clientWidth / 2;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTime, zoom]);
 
   if (!edl || !done) return null;
   const selected = edl.segments.find((s) => s.id === selectedId) ?? null;
@@ -93,11 +107,35 @@ export function Timeline() {
           )}
         </button>
 
+        <div className="ml-auto flex items-center gap-1 rounded-md border border-foreground/15 p-0.5">
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.max(1, z / 2))}
+            disabled={zoom <= 1}
+            className="rounded p-1 hover:bg-foreground/10 disabled:opacity-40"
+            aria-label="Zoom out"
+          >
+            <ZoomOut className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <span className="w-6 text-center text-[11px] tabular-nums text-foreground/50">
+            {zoom}×
+          </span>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.min(16, z * 2))}
+            disabled={zoom >= 16}
+            className="rounded p-1 hover:bg-foreground/10 disabled:opacity-40"
+            aria-label="Zoom in"
+          >
+            <ZoomIn className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() => setDenoise(!denoise)}
           className={cn(
-            "ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+            "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
             denoise
               ? "border-transparent accent-gradient text-white"
               : "border-foreground/15 hover:bg-foreground/5",
@@ -121,7 +159,8 @@ export function Timeline() {
         </label>
       </div>
 
-      {/* track */}
+      {/* track (scrolls when zoomed in) */}
+      <div ref={scrollRef} className="mt-3 overflow-x-auto rounded-lg bg-black/30">
       <div
         ref={trackRef}
         onPointerDown={(e) => {
@@ -130,7 +169,8 @@ export function Timeline() {
           setDrag("scrub");
           scrub(timeAt(e.clientX));
         }}
-        className="relative mt-3 h-14 cursor-pointer touch-none select-none overflow-hidden rounded-lg bg-black/30"
+        style={{ width: `${zoom * 100}%` }}
+        className="relative h-14 min-w-full cursor-pointer touch-none select-none"
       >
         {edl.segments.map((seg) => {
           const left = pn(seg.start);
@@ -180,8 +220,9 @@ export function Timeline() {
           style={{ left: `${Math.min(100, Math.max(0, pn(currentTime)))}%` }}
         />
       </div>
+      </div>
       <p className="mt-2 text-[11px] text-foreground/40">
-        Drag the playhead to scrub · select a clip and drag its edges to trim · Split cuts at the playhead.
+        Drag the playhead to scrub · select a clip and drag edges to trim · zoom for precision.
       </p>
     </div>
   );
