@@ -11,6 +11,8 @@ export function SaveButton() {
   const video = useEditorStore((s) => s.video);
   const edl = useEditorStore((s) => s.edl);
   const filter = useEditorStore((s) => s.filter);
+  const music = useEditorStore((s) => s.music);
+  const images = useEditorStore((s) => s.images);
   const projectId = useEditorStore((s) => s.projectId);
   const setProjectId = useEditorStore((s) => s.setProjectId);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -34,6 +36,15 @@ export function SaveButton() {
           height: video.height,
         },
         edl: { ...edl, filter },
+        music: music
+          ? { url: music.url, fileName: music.fileName, volume: music.volume }
+          : undefined,
+        images: images.map((im) => ({
+          url: im.url,
+          fileName: im.fileName,
+          x: im.x,
+          y: im.y,
+        })),
       });
       setProjectId(id);
       setStatus("saved");

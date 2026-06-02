@@ -23,6 +23,11 @@ export type ProjectVideoMeta = {
   fileSize?: number;
 };
 
+export type ProjectMedia = {
+  music?: { path: string; fileName: string; volume: number };
+  images?: { path: string; fileName: string; x: number; y: number }[];
+};
+
 export type ProjectRow = {
   id: string;
   user_id: string;
@@ -30,6 +35,7 @@ export type ProjectRow = {
   video_path: string | null;
   video_meta: ProjectVideoMeta;
   edl: Json | null;
+  media: ProjectMedia;
   thumbnail: string | null;
   created_at: string;
   updated_at: string;
@@ -62,6 +68,7 @@ export type Database = {
           video_path?: string | null;
           video_meta?: ProjectVideoMeta;
           edl?: Json | null;
+          media?: ProjectMedia;
           thumbnail?: string | null;
           created_at?: string;
           updated_at?: string;

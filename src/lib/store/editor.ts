@@ -107,6 +107,8 @@ interface EditorState {
     file: File;
     meta: { fileName?: string; fileSize?: number; duration?: number; width?: number; height?: number };
     edl: EDL;
+    music?: { file: File; fileName: string; volume: number };
+    images?: { file: File; fileName: string; x: number; y: number }[];
   }) => void;
   runExport: () => Promise<void>;
   setVideoEl: (el: HTMLVideoElement | null) => void;
@@ -279,7 +281,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setProjectId: (id) => set({ projectId: id }),
 
-  hydrateProject: ({ id, file, meta, edl }) => {
+  hydrateProject: ({ id, file, meta, edl, music, images }) => {
     const s = get();
     if (s.video) URL.revokeObjectURL(s.video.url);
     if (s.exportUrl) URL.revokeObjectURL(s.exportUrl);
@@ -301,8 +303,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       filter: edl.filter ?? "none",
       transcript: null,
       transcribe: doneStep(),
-      music: null,
-      images: [],
+      music: music
+        ? {
+            id: crypto.randomUUID(),
+            url: URL.createObjectURL(music.file),
+            fileName: music.fileName,
+            volume: music.volume,
+          }
+        : null,
+      images: (images ?? []).map((im) => ({
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(im.file),
+        fileName: im.fileName,
+        x: im.x,
+        y: im.y,
+      })),
       projectId: id,
       exportStep: idleStep,
       exportStage: null,

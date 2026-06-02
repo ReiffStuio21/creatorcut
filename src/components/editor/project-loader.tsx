@@ -15,7 +15,15 @@ export function ProjectLoader({ projectId }: { projectId: string }) {
     started.current = true;
     loadProject(projectId)
       .then((p) => {
-        if (p) hydrate({ id: projectId, file: p.file, meta: p.meta, edl: p.edl });
+        if (p)
+          hydrate({
+            id: projectId,
+            file: p.file,
+            meta: p.meta,
+            edl: p.edl,
+            music: p.music,
+            images: p.images,
+          });
         else setError(true);
       })
       .catch(() => setError(true));
