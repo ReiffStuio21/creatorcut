@@ -17,6 +17,9 @@ export function ExportPanel() {
   const aspectRatio = useEditorStore((s) => s.aspectRatio);
   const setAspectRatio = useEditorStore((s) => s.setAspectRatio);
   const runExport = useEditorStore((s) => s.runExport);
+  const serverRender = useEditorStore((s) => s.serverRender);
+  const setServerRender = useEditorStore((s) => s.setServerRender);
+  const workerConfigured = Boolean(process.env.NEXT_PUBLIC_RENDER_WORKER_URL);
   const step = useEditorStore((s) => s.exportStep);
   const stage = useEditorStore((s) => s.exportStage);
   const progress = useEditorStore((s) => s.exportProgress);
@@ -56,6 +59,19 @@ export function ExportPanel() {
           ))}
         </div>
       </div>
+
+      {workerConfigured && (
+        <label className="flex items-center gap-2 text-xs text-foreground/60">
+          <input
+            type="checkbox"
+            checked={serverRender}
+            onChange={(e) => setServerRender(e.target.checked)}
+            disabled={running}
+            className="h-3.5 w-3.5 accent-foreground"
+          />
+          Render on server (better for long clips)
+        </label>
+      )}
 
       <button
         type="button"

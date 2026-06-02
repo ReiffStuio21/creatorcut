@@ -1,0 +1,11 @@
+{
+  "name": "creatorcut-render-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0"
+  }
+}

@@ -86,7 +86,8 @@ interface EditorState {
   filter: VideoFilterId;
   transition: TransitionId;
 
-  // Export (Phase 6) — WasmRenderer turns the EDL into a downloadable MP4
+  // Export — WasmRenderer (browser) or ServerRenderer (worker) → downloadable MP4
+  serverRender: boolean;
   exportStep: StepState;
   exportStage: "loading" | "encoding" | null;
   exportProgress: number; // 0..1
@@ -117,6 +118,7 @@ interface EditorState {
   removeBroll: (id: string) => void;
   setFilter: (filter: VideoFilterId) => void;
   setTransition: (transition: TransitionId) => void;
+  setServerRender: (on: boolean) => void;
   setProjectId: (id: string) => void;
   hydrateProject: (p: {
     id: string;
@@ -143,6 +145,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   broll: [],
   filter: "none",
   transition: "cut",
+  serverRender: false,
   projectId: null,
   exportStep: idleStep,
   exportStage: null,
@@ -325,6 +328,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setTransition: (transition) => set({ transition }),
 
+  setServerRender: (on) => set({ serverRender: on }),
+
   setProjectId: (id) => set({ projectId: id }),
 
   hydrateProject: ({ id, file, meta, edl, music, images }) => {
@@ -415,19 +420,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         },
       };
 
-      // Dynamic import keeps the heavy FFmpeg bundle out of initial page load.
-      const { WasmRenderer } = await import("@/lib/render/wasm-renderer");
-      const renderer = new WasmRenderer({
-        onStage: (stage) => set({ exportStage: stage }),
-        onProgress: (value) => set({ exportProgress: value }),
-      });
-      const blob = await renderer.render(edlForExport, {
+      const sourceArg = {
         id: video.id,
         url: video.url,
         duration: video.duration,
         width: video.width,
         height: video.height,
-      });
+      };
+
+      // Pick the backend: the server worker (long clips) when enabled+configured,
+      // else the in-browser FFmpeg.wasm. Same Renderer interface either way.
+      const workerUrl = process.env.NEXT_PUBLIC_RENDER_WORKER_URL;
+      let blob: Blob;
+      if (get().serverRender && workerUrl) {
+        const { ServerRenderer } = await import("@/lib/render/server-renderer");
+        const renderer = new ServerRenderer(workerUrl, {
+          onStage: (stage) => set({ exportStage: stage }),
+        });
+        blob = await renderer.render(edlForExport, sourceArg);
+      } else {
+        // Dynamic import keeps the heavy FFmpeg bundle out of initial page load.
+        const { WasmRenderer } = await import("@/lib/render/wasm-renderer");
+        const renderer = new WasmRenderer({
+          onStage: (stage) => set({ exportStage: stage }),
+          onProgress: (value) => set({ exportProgress: value }),
+        });
+        blob = await renderer.render(edlForExport, sourceArg);
+      }
       set({
         exportUrl: URL.createObjectURL(blob),
         exportStep: doneStep(),
